@@ -49,6 +49,31 @@ urlpatterns = [
     path('api/state/update/<int:pk>/',StateUpdateView.as_view(),name="state-update"),
 
 
+    path('api/add/supervisor/',SupervisorCreateView.as_view(),name="add-supervisor"),
+    path('api/supervisors/',SuperviserListView.as_view(),name="supervisors"),
+    path('api/supervisor/delete/<int:pk>/',SupervisorDeleteView.as_view(),name="supervisor-delete"),
+    path('api/supervisor/update/<int:pk>/',SupervisorUpdateView.as_view(),name="supervisor-update"),
+
+
+    path('api/add/cutomer/address/<int:pk>/',ShippingCreateView.as_view(),name="add-customer-address"),
+    path('api/cutomers/',CustomerShippingAddress.as_view(),name="cutomers"),
+    path('api/delete/cutomer/address/<int:pk>/',CustomerShippingAddressDelete.as_view(),name="address-delete"),
+    path('api/update/cutomer/address/<int:pk>/',CustomerShippingAddressUpdate.as_view(),name="address-update"),
+
+
+    path('api/add/product/variant/',VariantProductCreate.as_view(),name="add-variant-product"),
+    path('api/products/<int:product_id>/variants/', VariantProductsByProductView.as_view(), name='variant-products-by-product'),
+    path('api/product/<int:pk>/variant/data/', VariantProductDetailView.as_view(), name='variant-product-detail'),
+
+
+    path('api/add/product/single/',SingleProductCreate.as_view(),name="add-single-product"),
+    path('api/products/<int:product_id>/single/',SingleProductsByProductView.as_view(),name="single-products-by-product"),
+    path('api/product/<int:pk>/single/data/',SingleProductDetailView.as_view(),name="single-product-detail"),
+
+
+
+
+
 
 
 

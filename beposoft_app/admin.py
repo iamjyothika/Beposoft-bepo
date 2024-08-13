@@ -12,5 +12,11 @@ admin.site.register(Products)
 admin.site.register(Family)
 admin.site.register(Shipping)
 
+admin.site.register(Attributes)
+admin.site.register(ProductAttribute)
+admin.site.register(VariantProducts)
+
+
+
 
 

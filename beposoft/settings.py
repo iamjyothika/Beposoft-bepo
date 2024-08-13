@@ -30,7 +30,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 CORS_ALLOWED_ORIGINS = [
-    "https://sponsors-vg-journalists-pond.trycloudflare.com" 
+    "https://az-powerpoint-dishes-toyota.trycloudflare.com" 
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True

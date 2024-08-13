@@ -17,18 +17,8 @@ class State(models.Model):
     class Meta :
         db_table = "State"
 
-
-class Supervisor(models.Model):
-    name = models.CharField(max_length=100)
-
-    class Meta:
-        db_table = "Supervisor"
-
-    def __str__(self):
-        return self.name
-    
-
 class Departments(models.Model):
+
     name = models.CharField(max_length=100)
 
     class Meta:
@@ -121,6 +111,27 @@ class User(models.Model):
         db_table = "User"
 
 
+class Attributes(models.Model):
+    created_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)  # ex COLOR SIZE 
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = "attributes"
+
+
+class ProductAttribute(models.Model):
+    attribute = models.ForeignKey(Attributes, on_delete=models.CASCADE)
+    value = models.CharField(max_length=255) #ex RED BLACK L M 
+
+    def __str__(self):
+        return f"{self.attribute.name}: {self.value}"
+
+    class Meta:
+        db_table = "product_attributes" 
+
 
 class Customers(models.Model):
     gst = models.CharField(
@@ -152,6 +163,7 @@ class Customers(models.Model):
 
 
 class Shipping(models.Model):
+    created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=500)
@@ -187,10 +199,10 @@ class Products(models.Model):
         ('SET OF 6', 'SET OF 6'),
         ('SET OF 8', 'SET OF 8'),
     ]
-    
+    created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     name = models.CharField(max_length=500)
     hsn_code = models.CharField(max_length=100)
-    family = models.ManyToManyField(Family, related_name='products',null=True)
+    family = models.ManyToManyField(Family, related_name='products')
     type = models.CharField(max_length=100, choices=PRODUCT_TYPES, default='single')
     unit = models.CharField(max_length=100, choices=UNIT_TYPES, default="BOX")
     purchase_rate = models.FloatField()
@@ -212,5 +224,32 @@ class Products(models.Model):
         return self.name
 
 
+class SingleProducts(models.Model):
+    created_user = models.ForeignKey(User,on_delete=models.CASCADE)
+    product = models.ForeignKey('Products', on_delete=models.CASCADE, related_name='single_products')
+    price = models.FloatField(default=0)
+    stock = models.IntegerField(default=0)
+    image = models.ImageField(upload_to='images/')
+
+    class Meta:
+        db_table = "single_product"
+
+    def __str__(self):
+        return f"{self.product.name} - {self.price}"
+
+
+class VariantProducts(models.Model):
+    created_user = models.ForeignKey(User,on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='variant_products')
+    name = models.CharField(max_length=100)
+    stock = models.PositiveBigIntegerField(null=True)
+    price = models.FloatField(default=0)
+    image = models.ImageField(upload_to='images/',null=True)
+
+    class Meta :
+        db_table = "variant_product"
+    
+    def __str__(self):
+        return self.name
 
 

@@ -127,4 +127,35 @@ class SupervisorSerializers(serializers.ModelSerializer):
     class Meta:
         model = Supervisor
         fields = "__all__"
+
+
+class ShippingSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Shipping
+        fields = "__all__"
+
+
+
+class VariantProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VariantProducts
+        fields = "__all__"
+
+
+class SingleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SingleProducts
+        fields = ['product', 'price', 'stock', 'image']
+
+    def create(self, validated_data):
+        created_user = self.context['created_user']
+        validated_data['created_user'] = created_user
+        return SingleProducts.objects.create(**validated_data)
+
+
+
+
+
+
+
         
