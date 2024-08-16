@@ -15,6 +15,9 @@ admin.site.register(Shipping)
 admin.site.register(Attributes)
 admin.site.register(ProductAttribute)
 admin.site.register(VariantProducts)
+admin.site.register(Order)
+admin.site.register(OrderItem)
+
 
 
 

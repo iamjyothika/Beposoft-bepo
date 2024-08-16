@@ -8,7 +8,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['name', 'email', 'username', 'password', 'retype_password', 'gender']
+        fields = ['name', 'email', 'username', 'password', 'retype_password']
 
     def validate(self, data):
         if data['password'] != data['retype_password']:
@@ -21,7 +21,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             username=validated_data['username'],
             name=validated_data['name'],
-            gender=validated_data.get('gender'),  
+
             password=validated_data.get('password'),  
 
         )
@@ -49,45 +49,8 @@ class CustomerModelSerializer(serializers.ModelSerializer):
             'id', 'gst', 'name', 'manager', 'phone', 'alt_phone', 'email',
             'address', 'zip_code', 'city', 'state', 'comment', 'created_at'
         ]
-    
-    gst = serializers.CharField(
-        max_length=15,
-        required=False,  
-        validators=[validate_gst]
-    )
-    name = serializers.CharField(max_length=100, required=True)
-    manager = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=True)
-    phone = serializers.CharField(max_length=10, required=True)
-    alt_phone = serializers.CharField(max_length=10, required=False)
-    email = serializers.EmailField(max_length=100, required=True)
-    address = serializers.CharField(max_length=500, required=True)
-    zip_code = serializers.IntegerField(required=True)
-    city = serializers.CharField(max_length=100, required=True)
-    state = serializers.CharField(max_length=100, required=True)
-    comment = serializers.CharField(max_length=500, required=False)
-    created_at = serializers.DateField(read_only=True) 
 
-    def validate_gst(value):
-        """
-        Validate GST number.
-        - Should only contain uppercase letters and numbers.
-        - Must be exactly 15 characters long.
-        """
-        # Check if value is None (optional field)
-        if value is None:
-            return value
-
-        # Check length
-        if len(value) != 15:
-            raise serializers.ValidationError("GST number must be exactly 15 characters long.")
-
-        # Check if value contains only uppercase letters and numbers
-        if not re.match(r'^[A-Z0-9]+$', value):
-            raise serializers.ValidationError("GST number must contain only uppercase letters and numbers.")
-
-        return value 
-    
-
+        
 class ProductSerilizers(serializers.ModelSerializer):
     class Meta:
         model = Products
@@ -115,6 +78,9 @@ class DepartmentSerilizers(serializers.ModelSerializer):
         fields = "__all__"
 
 
+    
+
+
 
 class StateSerializers(serializers.ModelSerializer):
     class Meta:
@@ -127,6 +93,13 @@ class SupervisorSerializers(serializers.ModelSerializer):
     class Meta:
         model = Supervisor
         fields = "__all__"
+
+class SupervisorViewSerializers(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+
+    class Meta:
+        model = Supervisor
+        fields = ['id', 'name', 'department', 'department_name']
 
 
 class ShippingSerializers(serializers.ModelSerializer):
@@ -151,7 +124,41 @@ class SingleProductSerializer(serializers.ModelSerializer):
         created_user = self.context['created_user']
         validated_data['created_user'] = created_user
         return SingleProducts.objects.create(**validated_data)
+    
 
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'name', 'description', 'rate', 'tax', 'quantity', 'price']
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)  # Nested serializer for order items
+
+    class Meta:
+        model = Order
+        fields = ['company', 'customer', 'billing_address', 'status', 'total_amount', 'payment_method','manage_staff', 'items']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        order = Order.objects.create(**validated_data)
+        for item_data in items_data:
+            OrderItem.objects.create(order=order, **item_data)
+        return order
+    
+
+
+class OrderModelSerilizer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = '__all__'
+
+
+
+class OrderItemModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = '__all__'
 
 
 

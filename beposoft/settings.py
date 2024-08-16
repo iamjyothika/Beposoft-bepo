@@ -27,13 +27,14 @@ SECRET_KEY = 'django-insecure-a0e4^&1w3e78i(lrlq*5$vvwt9ekdp&1r^4^$qjt050b(g$bs4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['https://drawings-observe-something-promises.trycloudflare.com','*']
 
 CORS_ALLOWED_ORIGINS = [
-    "https://az-powerpoint-dishes-toyota.trycloudflare.com" 
+    "https://drawings-observe-something-promises.trycloudflare.com" ,
+    "http://localhost:5173"
 ]
 
-# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
 SECURE_COOKIE = True
 

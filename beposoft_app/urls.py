@@ -71,6 +71,15 @@ urlpatterns = [
     path('api/product/<int:pk>/single/data/',SingleProductDetailView.as_view(),name="single-product-detail"),
 
 
+    path('api/order/create/', CreateOrder.as_view(), name='create-order'),
+    path('api/orders/', OrderListView.as_view(), name='orders'),
+    path('api/order/<int:order_id>/items/', CustomerOrderItems.as_view(), name='order-items'),
+
+    path('api/staff/orders/', CustomerOrderList.as_view(), name='staff-orders'), # staff based orders
+
+
+
+
 
 
 

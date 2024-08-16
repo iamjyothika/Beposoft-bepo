@@ -12,6 +12,8 @@ from django.db.models import Q
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, DecodeError
 from django.contrib.auth import authenticate
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import DatabaseError
 
 
 class UserRegistrationAPIView(APIView):
@@ -313,6 +315,7 @@ class UserCustomerAddingView(APIView):
         except jwt.InvalidTokenError:
             return Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             
@@ -890,13 +893,15 @@ class DepartmentCreateView(APIView):
                 payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
                 user_id = payload.get('id')
 
-                if not User.objects.filter(pk=user_id).exists():
+                user = User.objects.filter(pk=user_id).first()
+                if not user:
                     return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
                 serializer = DepartmentSerilizers(data=request.data)
                 if serializer.is_valid():
                     serializer.save()
                     return Response({"message": "Departmen added successftully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+                print(serializer.errors)
                 return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
             except jwt.ExpiredSignatureError:
@@ -927,7 +932,7 @@ class DepartmentListView(APIView):
                     return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
                 
                 department = Departments.objects.all()
-                serializer = ProductSerilizers(department, many=True)
+                serializer = DepartmentSerilizers(department, many=True)
                 return Response({"message": "Departments list successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
                             
             except jwt.ExpiredSignatureError:
@@ -1315,7 +1320,7 @@ class SuperviserListView(APIView):
                     return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
                 
                 supervisor = Supervisor.objects.all()
-                serializer = SupervisorSerializers(supervisor, many=True)
+                serializer = SupervisorViewSerializers(supervisor, many=True)
                 return Response({"message": "Supervisor list successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
                             
             except jwt.ExpiredSignatureError:
@@ -1986,4 +1991,153 @@ class SingleProductsByProductView(APIView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
+
+
+class CreateOrder(APIView):
+    def post(self, request):
+        token = request.headers.get('Authorization')
+        if not token:
+            return Response({"status": "Unauthorized", "message": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            # Decode JWT token
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+            user_id = payload.get('id')
+
+            if not User.objects.filter(pk=user_id).exists():
+                return Response({"status": "error", "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
             
+            # Deserialize request data
+            serializer = OrderSerializer(data=request.data)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+            
+            # Handle validation errors
+            return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except jwt.ExpiredSignatureError:
+            return Response({"status": "error", "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        except jwt.InvalidTokenError:
+            return Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        except Exception as e:
+            return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class OrderListView(APIView):
+    def get(self, request):
+        try:
+            token = request.headers.get('Authorization')
+            if not token:
+                return Response({"status": "Unauthorized", "message": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            try:
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                user_id = payload.get('id')
+                if not user_id or not User.objects.filter(pk=user_id).exists():
+                    return Response({"message": "User not found or invalid token"}, status=status.HTTP_404_NOT_FOUND)
+            except ExpiredSignatureError:
+                return Response({"status": "error", "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+            except (DecodeError, InvalidTokenError):
+                return Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            orders = OrderItem.objects.all()
+            if not orders.exists():
+                return Response({"status": "error", "message": "No orders found"}, status=status.HTTP_404_NOT_FOUND)
+
+            serializer = OrderItemModelSerializer(orders, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class CustomerOrderList(APIView):
+    def get(self, request):
+        try:
+            # Retrieve the token from the headers
+            token = request.headers.get('Authorization')
+            if not token:
+                return Response({"status": "Unauthorized", "message": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            try:
+                # Decode and validate the token
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                user_id = payload.get('id')
+                
+                # Fetch the user
+                user = User.objects.filter(pk=user_id).first()
+                if not user:
+                    return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            except ExpiredSignatureError:
+                return Response({"status": "error", "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+            except (DecodeError, InvalidTokenError):
+                return Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Fetch orders managed by the user
+            orders = Order.objects.filter(manage_staff=user)
+            if not orders.exists():
+                return Response({"status": "error", "message": "No orders found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Serialize and return the orders
+            serializer = OrderModelSerilizer(orders, many=True)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class CustomerOrderItems(APIView):
+    def get(self, request, order_id):
+        try:
+            token = request.headers.get('Authorization')
+            if not token:
+                return Response({"status": "Unauthorized", "message": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            try:
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+                user_id = payload.get('id')
+                
+                user = User.objects.filter(pk=user_id).first()
+                if not user:
+                    return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            except ExpiredSignatureError:
+                return Response({"status": "error", "message": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED)
+            except (DecodeError, InvalidTokenError):
+                return Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            order = Order.objects.filter(pk=order_id).first()
+            orderItems = OrderItem.objects.filter(order=order_id)
+            if not orderItems.exists():
+                return Response({"status": "error", "message": "No orders Items found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            orderSerilizer = OrderModelSerilizer(order, many=False)
+            serializer = OrderItemModelSerializer(orderItems, many=True)
+            return Response({"order":orderSerilizer.data,"items":serializer.data}, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+# class OrderStatusUpdate()
