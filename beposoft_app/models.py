@@ -18,9 +18,7 @@ class State(models.Model):
         db_table = "State"
 
 class Departments(models.Model):
-
     name = models.CharField(max_length=100)
-
     class Meta:
         db_table = "Departments"
 
@@ -56,12 +54,12 @@ class User(models.Model):
     name = models.CharField(max_length=100)
     username = models.CharField(max_length=100,unique=True,null=True)
     email = models.EmailField(max_length=100,unique=True)
-    phone = models.CharField(max_length=100)
+    phone = models.CharField(max_length=100,unique=True)
     alternate_number = models.CharField(max_length=10, null=True, blank=True)
     password = models.CharField(max_length=100)
     image = models.ImageField(max_length=100, upload_to="staff_images/", null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    allocated_states = models.ManyToManyField(State)
+    allocated_states = models.ManyToManyField(State, blank=True)
     gender = models.CharField(max_length=100, null=True, blank=True)
     marital_status = models.CharField(max_length=100, null=True, blank=True)
     driving_license = models.CharField(max_length=100, null=True, blank=True)
@@ -70,8 +68,8 @@ class User(models.Model):
     designation = models.CharField(max_length=100, null=True, blank=True)
     grade = models.CharField(max_length=100, null=True, blank=True)
     address = models.CharField(max_length=500, null=True, blank=True)
-    city = models.CharField(max_length=100, null=-True,blank=True)
-    country = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=-True,blank=True)
+    country = models.CharField(max_length=100,default='india', null=True, blank=True)
     join_date = models.DateField(null=True, blank=True)
     confirmation_date = models.DateField(null=True, blank=True)
     termination_date = models.DateField(null=True, blank=True)
@@ -90,12 +88,15 @@ class User(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        # Handle password hashing
         if self.pk is None or 'password' in kwargs:  
-            self.password = make_password(self.password)
-        # Handle unique EID
+            if 'password' in kwargs:
+                self.password = make_password(kwargs['password'])
+            elif self._state.adding or not self.pk:  
+                self.password = make_password(self.password)
+
         if not self.eid:
             self.eid = self.generate_unique_eid()
+
         super().save(*args, **kwargs)
 
     def check_password(self, raw_password):
@@ -149,7 +150,7 @@ class Customers(models.Model):
     address = models.CharField(max_length=500,null=True)
     zip_code =models.IntegerField()
     city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
+    state = models.ForeignKey(State, on_delete=models.CASCADE)
     comment = models.CharField(max_length=500,null=True)
     created_at = models.DateField(auto_now_add=True)
 
@@ -202,13 +203,16 @@ class Products(models.Model):
     created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     name = models.CharField(max_length=500)
     hsn_code = models.CharField(max_length=100)
-    family = models.ManyToManyField(Family, related_name='products')
+    family = models.ManyToManyField(Family, related_name='familys')
     type = models.CharField(max_length=100, choices=PRODUCT_TYPES, default='single')
     unit = models.CharField(max_length=100, choices=UNIT_TYPES, default="BOX")
     purchase_rate = models.FloatField()
     tax = models.FloatField() 
+    image = models.ImageField(upload_to='images/',null=True)
     exclude_price = models.FloatField(editable=False)  
     selling_price = models.FloatField(null=True)  
+    stock = models.IntegerField(default=0)
+    
 
     def calculate_exclude_price(self):
         if self.selling_price is not None:
@@ -226,32 +230,55 @@ class Products(models.Model):
 
 class SingleProducts(models.Model) :
     created_user = models.ForeignKey(User,on_delete=models.CASCADE)
-    product = models.ForeignKey('Products', on_delete=models.CASCADE, related_name='single_products')
-    price = models.FloatField(default=0)
-    stock = models.IntegerField(default=0)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='single_products')
     image = models.ImageField(upload_to='images/')
 
     class Meta:
         db_table = "single_product"
 
     def __str__(self):
-        return f"{self.product.name} - {self.price}"
+        return f"{self.product.name}"
 
 
 class VariantProducts(models.Model):
-    created_user = models.ForeignKey(User,on_delete=models.CASCADE)
+    created_user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='variant_products')
     name = models.CharField(max_length=100)
-    stock = models.PositiveBigIntegerField(null=True)
-    price = models.FloatField(default=0)
-    image = models.ImageField(upload_to='images/',null=True)
+    stock = models.PositiveBigIntegerField(default=0, null=True)
+    color = models.CharField(max_length=100, null=True, blank=True)
+    is_variant = models.BooleanField(default=False)
 
-    class Meta :
+    class Meta:
         db_table = "variant_product"
-    
+
     def __str__(self):
         return self.name
+    
+    
+class VariantImages(models.Model):
+    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE, related_name='variant_images')
+    image = models.ImageField(upload_to='images/')
+    class Meta:
+        db_table = "variant_images"
+        
+    def __str__(self):
+        return f"{self.variant_product.name} - {self.image}"
+        
+    
 
+
+class ProductAttributeVariant(models.Model):
+    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,related_name="sizes")
+    attribute = models.CharField(max_length=100)
+    stock = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        db_table = "product_attribute_variant"
+
+    def __str__(self):
+        return f"{self.variant_product.name} - {self.attribute}"
+    
+    
 
 
 
@@ -270,6 +297,7 @@ class Order(models.Model):
     order_date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=[
         ('Pending', 'Pending'),
+        ('Shipped', 'Shipped'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
@@ -321,7 +349,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=1000)
     description = models.CharField(max_length=100)
     rate = models.DecimalField(max_digits=10, decimal_places=2)  # without GST
     tax = models.PositiveIntegerField()  # tax percentage

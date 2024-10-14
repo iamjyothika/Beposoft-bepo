@@ -27,18 +27,32 @@ SECRET_KEY = 'django-insecure-a0e4^&1w3e78i(lrlq*5$vvwt9ekdp&1r^4^$qjt050b(g$bs4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://drawings-observe-something-promises.trycloudflare.com','*']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost','*']
+
 
 CORS_ALLOWED_ORIGINS = [
-    "https://drawings-observe-something-promises.trycloudflare.com" ,
-    "http://localhost:5173"
+    "http://localhost:5173",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOW_ALL_ORIGINS  = True
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-requested-with',
+    'accept',
+    'origin',
+    'accept-encoding',
+    'x-csrftoken',
+]
+
+
 
 SECURE_COOKIE = True
 
-JWT_EXPIRATION_MINUTES = 1440  # Example expiration time
+JWT_EXPIRATION_MINUTES = 1440 
 
 # Application definition
 
@@ -51,7 +65,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'beposoft_app'
+    'beposoft_app',
+    'bepocart'
 ]
 
 MIDDLEWARE = [
@@ -94,7 +109,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  
         'NAME': 'beposoft_db',  
         'USER': 'root',  
-        'PASSWORD': '',  
+        'PASSWORD': '252562',  
         'HOST': 'localhost',  
         'PORT': '3306',  
         'OPTIONS': {  
