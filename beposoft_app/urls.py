@@ -59,6 +59,13 @@ urlpatterns = [
     path('api/add/product/variant/',VariantProductCreate.as_view(),name="add-variant-product"),# completed
     path('api/products/<int:pk>/variants/', VariantProductsByProductView.as_view(), name='variant-products-by-product'), # completed
     path('api/product/<int:pk>/variant/data/', VariantProductDetailView.as_view(), name='variant-product-detail'), # completed
+    path('api/variant/<int:pk>/images/',VariantProductImageView.as_view()),
+    path('api/variant/<int:pk>/delete/',VariantImageDelete.as_view()),
+    
+    
+    path('api/variant/product/<int:id>/size/view/',VariantProductsSizeView.as_view()),
+    path('api/variant/product/<int:pk>/size/edit/',VariantProductsSizeDelete.as_view()),
+    
 
 
     path('api/add/product/attributes/',ProductAttributeCreate.as_view(),name="add-product-attributes"),
@@ -68,10 +75,10 @@ urlpatterns = [
 
     path('api/add/product/attribute/values/',ProductAttributeCreateValue.as_view(),name="add-product-attribute-values"),
     path('api/product/attribute/<int:pk>/values/',ProductAttributeListValue.as_view(),name="product-attribute-values"),
-    # path('api/product/attribute/delete/<int:pk>/values/',ProductAttributeDelete.as_view(),name="delete-product-attribute-values"),
+    path('api/product/attribute/delete/<int:pk>/values/',ProductAttributeValueDelete.as_view(),name="delete-product-attribute-values"),
 
 
-
+    path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
     path('api/order/create/', CreateOrder.as_view(), name='create-order'),
     path('api/orders/', OrderListView.as_view(), name='orders'),
     path('api/order/<int:order_id>/items/', CustomerOrderItems.as_view(), name='order-items'),

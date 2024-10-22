@@ -45,14 +45,36 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
+        
+        
+    def validate(self, data):
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError("A user with this email already exists")
+        
+        if User.objects.filter(phone=data['phone']).exists():
+            raise serializers.ValidationError("A user with this phone number already exists")
+        
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError("A user with this username already exists")
+        
+        if User.objects.filter(alternate_number = data['alternate_number']).exists():
+            raise serializers.ValidationError("A user with this alternate number already exists")
+        
+        return data
 
+
+
+class UserUpdateSerilizers(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = "__all__"
 
 class StaffSerializer(serializers.ModelSerializer):
     department = serializers.CharField(source='department_id.name', read_only=True)
 
     class Meta:
         model = User
-        fields = ['id','eid','name','department','join_date','phone','email','designation']
+        fields = ['id','eid','name','department','join_date','phone','email','designation','family']
 
 
 class CustomerModelSerializer(serializers.ModelSerializer):
@@ -184,7 +206,7 @@ class ProductSerializerView(serializers.ModelSerializer):
     class Meta:
         model = Products
         fields = [
-            "id", "created_user", "name", "hsn_code", "type", "unit", 
+            "id", "created_user", "name", "hsn_code", "type", "unit", 'family',
             "purchase_rate", "tax", "image", "exclude_price", "selling_price", "stock","single_products","variant_products"
         ]
         
@@ -252,6 +274,7 @@ class ShippingSerializers(serializers.ModelSerializer):
 
     def create(self, validated_data):
         created_user = self.context['created_user']
+        
         validated_data['created_user'] = created_user
         return Shipping.objects.create(**validated_data)
     
@@ -280,7 +303,7 @@ class VariantImageSerilizers(serializers.ModelSerializer):
 class SizeSerializers(serializers.ModelSerializer):
     class Meta :
         model = ProductAttributeVariant
-        fields = ["id","attribute","stock"]
+        fields = "__all__"
         
 
 # class VariantProductSerializerView(serializers.ModelSerializer):
@@ -354,6 +377,13 @@ class ProductAttributeModelSerilizer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttribute
         fields = '__all__'
+        
+        
+        
+class BepocartSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = BeposoftCart
+        fields = "__all__"
 
 
 

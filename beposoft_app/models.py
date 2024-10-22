@@ -81,6 +81,7 @@ class User(models.Model):
         ('disapproved', 'Disapproved'),
     ]
     approval_status = models.CharField(max_length=100, choices=APPROVAL_CHOICES, default='disapproved', null=True)
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -243,7 +244,7 @@ class SingleProducts(models.Model) :
 class VariantProducts(models.Model):
     created_user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='variant_products')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=500)
     stock = models.PositiveBigIntegerField(default=0, null=True)
     color = models.CharField(max_length=100, null=True, blank=True)
     is_variant = models.BooleanField(default=False)
@@ -376,6 +377,24 @@ class OrderItem(models.Model):
         self.net_price = self.calculate_net_price()
         self.total = self.calculate_total()
         super().save(*args, **kwargs)
+        
+        
+        
+        
+class BeposoftCart(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
+    size = models.ForeignKey(ProductAttributeVariant,on_delete=models.CASCADE, blank=True, null=True)
+    quantity = models.PositiveIntegerField(default=1)
+    discount = models.IntegerField(null=True, blank=True)
+    note = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.product.name} - {self.quantity}"
+    class Meta:
+        db_table = "beposoft_cart"
 
 
 

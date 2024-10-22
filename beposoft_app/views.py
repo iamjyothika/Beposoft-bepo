@@ -41,9 +41,6 @@ class UserRegistrationAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-
-
-
 class UserLoginAPIView(APIView):
     def post(self, request):
         try:
@@ -67,8 +64,7 @@ class UserLoginAPIView(APIView):
                     token = jwt.encode(user_token, settings.SECRET_KEY, algorithm='HS256')
 
                     # Set JWT token in cookies
-                    response = Response({
-                        "status": "success",
+                    response = Response({ "status": "success",
                         "message": "Login successful",
                         "token": token,
                         'name':customer.name,
@@ -103,17 +99,16 @@ class UserLoginAPIView(APIView):
 
 
 class BaseTokenView(APIView):
+    
     def get_user_from_token(self, request):
         token = request.headers.get('Authorization')
         
         if not token:
             return None, Response({"status": "Unauthorized", "message": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Optional: Check if token has the correct prefix (Bearer)
         if not token.startswith("Bearer "):
             return None, Response({"status": "error", "message": "Token must start with 'Bearer '"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        # Remove 'Bearer ' prefix to extract the actual token
         token = token.split(" ")[1]
 
         try:
@@ -133,7 +128,6 @@ class BaseTokenView(APIView):
             return None, Response({"status": "error", "message": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
         
         except Exception as e:
-            logger.error(f"An error occurred while decoding the token: {e}")
             return None, Response({"status": "error", "message": "An error occurred while decoding the token", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
@@ -141,7 +135,6 @@ class BaseTokenView(APIView):
 class UserProfileData(BaseTokenView):
     def get(self, request):
         try:
-            # Retrieve the user using token
             user, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
@@ -171,17 +164,13 @@ class CreateUserView(BaseTokenView):
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data, "message": "User created successfully"}, status=status.HTTP_201_CREATED)
-            
-            
             column_errors = {field: error for field, error in serializer.errors.items()}
-            print(column_errors)
-            return Response({"status": "error", "message": "Validation failed", "errors": column_errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"status": "error", "message": "Validation failed","errors": column_errors }, status=status.HTTP_400_BAD_REQUEST)
 
-        except User.DoesNotExist:
-            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        
         except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(e)
+            return Response({ "status": "error", "message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class Users(BaseTokenView):
@@ -222,6 +211,7 @@ class UserDataUpdate(BaseTokenView):
                 return error_response
 
             user = self.get_user(pk)
+            
             serializer = UserSerializer(user)
             return Response({"message": "User fetched successfully", "data": serializer.data}, status=status.HTTP_200_OK)
 
@@ -235,20 +225,17 @@ class UserDataUpdate(BaseTokenView):
                 return error_response
 
             user = self.get_user(pk)
-            serializer = UserSerializer(user, data=request.data)
+            serializer = UserUpdateSerilizers(user, data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"message": "User updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
-
+            print(serializer.errors)
             return Response({"status": "error", "message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-
-            
 
 
 class UserCustomerAddingView(BaseTokenView):
@@ -423,9 +410,31 @@ class ProductCreateView(BaseTokenView):
             if error_response:
                 return error_response
 
+            # Retrieve family IDs from request data
+            family_ids = request.data.getlist('family[]')  # Use the same key as in FormData
+
+            # Check if family_ids is not empty
+            if not family_ids:
+                return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Retrieve Family instances based on the provided IDs
+            families = Family.objects.filter(pk__in=family_ids)
+
+            # Ensure at least one family is found
+            if not families.exists():
+                return Response({"message": "No valid family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Initialize serializer with request data
             serializer = ProductsSerializer(data=request.data)
+            
             if serializer.is_valid():
-                serializer.save()
+                # Save the product instance
+                product = serializer.save()
+
+                # Associate the product with the selected families
+                product.family.set(families)  # Assuming `family` is a ManyToMany field in your Product model
+                
+                print(f"Save Data: {serializer.data}")
                 return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
             print(f"{serializer.errors}")
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -433,7 +442,6 @@ class ProductCreateView(BaseTokenView):
         except Exception as e:
             logger.error(f"Error occurred while creating a product: {str(e)}")
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class ProductListView(BaseTokenView):
     def get(self, request):
@@ -932,17 +940,18 @@ class VariantProductCreate(BaseTokenView):
 
             # Get request data
             product_id = request.data.get("product")
-            attributes = request.data.get("attributes", "[]")  # Default to empty JSON list
+            attributes = request.data.get("attributes", "[]")  
+            print(attributes)
 
-            # Parse the attributes JSON string into a Python list
             try:
-                attributes = json.loads(attributes)  # Convert the JSON string to a list of dictionaries
+                attributes = json.loads(attributes) 
             except json.JSONDecodeError:
+                print("invalid atribute format")
                 return Response({"message": "Invalid attributes format"}, status=status.HTTP_400_BAD_REQUEST)
 
             images = request.FILES.getlist('images')
 
-            print(f"Attributes   :{attributes}")
+            print(f"Attributes  {attributes}")
 
             # Fetch product
             product_instance = Products.objects.filter(pk=product_id).first()
@@ -964,15 +973,12 @@ class VariantProductCreate(BaseTokenView):
 
                     attribute_values[attr_name] = attr_values_list
 
-                # Generate combinations of attributes
                 combinations = list(itertools.product(*attribute_values.values()))
 
                 for combination in combinations:
-                    # Map the combination back to the attribute names
                     combined_attr = dict(zip(attribute_values.keys(), combination))
 
-                    # Concatenate all attribute values into a single string
-                    all_attributes = '-'.join(combination)  # Combine all attribute values into one string
+                    all_attributes = '-'.join(combination)  
 
                     # Create the variant name based on attributes
                     name = f"{product_instance.name}-{'-'.join(combination)}"
@@ -986,14 +992,13 @@ class VariantProductCreate(BaseTokenView):
                     )
 
             else:
-                # Save images for the single product
                 for image in images:
                     SingleProducts.objects.create(product=product_instance, created_user=User.objects.get(pk=authUser.pk), image=image)
 
             return Response({"message": "Product added successfully"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            print(e)
+            print("Exception error   :",e)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1045,8 +1050,12 @@ class VariantProductDetailView(BaseTokenView):
                 return error_response
                 
             variant_product = self.get_product(pk)
+            if variant_product.is_variant == False:
+                sizes = ProductAttributeVariant.objects.filter(variant_product =variant_product )
+                for i in sizes:
+                    i.delete()
             serializer = VariantProductSerializer(variant_product)
-            return Response({"variant_product": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
             
         except VariantProducts.DoesNotExist:
             return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -1058,18 +1067,30 @@ class VariantProductDetailView(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            
+            images = request.FILES.getlist('images')
+            print(images)
+            sizes = request.data.getlist('size',[])
+            print(f"size    :{sizes}")
                 
             variant_product = self.get_product(pk)
             serializer = VariantProductSerializer(variant_product, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                for size in sizes :
+                    ProductAttributeVariant.objects.create(attribute = size ,variant_product = variant_product)
+                for image in images:
+                    VariantImages.objects.create(variant_product=variant_product ,image=image)
+                
                 return Response({"message": "Variant product updated successfully", "variant_product": serializer.data}, status=status.HTTP_200_OK)
+            
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
         
         except VariantProducts.DoesNotExist:
             return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, pk):
@@ -1089,6 +1110,127 @@ class VariantProductDetailView(BaseTokenView):
         
 
 
+
+
+class VariantProductImageView(APIView):
+    def get(self,request,pk):
+        try:
+            variant_product = VariantProducts.objects.get(pk=pk)
+            images = VariantImages.objects.filter(variant_product=variant_product)
+            serializer = VariantImageSerilizers(images, many=True)
+            return Response({"images": serializer.data}, status=status.HTTP_200_OK)
+        except VariantProducts.DoesNotExist:
+            return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class VariantImageDelete(BaseTokenView):
+    def delete(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            image = get_object_or_404(VariantImages, pk=pk)
+            image.delete()
+            return Response({"message": "Image deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+        except VariantImages.DoesNotExist:
+            return Response({"message": "Image not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class VariantProductsSizeView(APIView):
+    def get(self, request,id):
+        try:
+            products = ProductAttributeVariant.objects.filter(variant_product=id)
+            if not  products:
+                return Response({"message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+            serializer = SizeSerializers(products, many=True)
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class VariantProductsSizeDelete(APIView):
+    def delete(self, request, pk):
+        try:
+            size = get_object_or_404(ProductAttributeVariant, pk=pk)
+            size.delete()
+            return Response({"message": "Size deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            print(f"Error deleting size: {e}")
+            return Response({"message": "An error occurred while deleting the size"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request, pk):
+        try:
+            size = get_object_or_404(ProductAttributeVariant, pk=pk)
+            serializer = SizeSerializers(size, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "Size updated successfully", "size": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Log the exception details
+            print(f"Error updating size: {e}")
+            return Response({"message": "An error occurred while updating the size"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class Cart(BaseTokenView):
+    PRODUCT_TYPE_SINGLE = 'single'
+    
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            product = get_object_or_404(Products, pk=request.data['product'])
+            
+            if product.type == self.PRODUCT_TYPE_SINGLE:
+                return self.add_single_product_to_cart(product, authUser)
+            else:
+                if 'variant' not in request.data:
+                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Attempt to retrieve the variant, returning a 404 error if not found
+                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
+                
+                # Proceed to add the variant product to the cart
+                return self.add_variant_product_to_cart(product, variant, request, authUser)
+        
+        except KeyError as e:
+            return Response({"status": "error", "message": "Missing field", "errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def add_single_product_to_cart(self, product, user):
+        """Add a single product to the cart."""
+        BeposoftCart.objects.create(product=product, user=user)
+        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
+
+    def add_variant_product_to_cart(self, product, variant, request, user):
+        """Add a variant product to the cart."""
+        # Check if the size is provided in the request
+        if 'size' not in request.data:
+            return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Attempt to retrieve the size
+        size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
+
+        if not variant.is_variant:
+            BeposoftCart.objects.create(product=product, variant=variant, user=user)
+        else:
+            BeposoftCart.objects.create(product=product, variant=variant, user=user, size=size)
+        
+        return Response({"status": "success", "message": " product added to cart"}, status=status.HTTP_201_CREATED)
+    
+    
+    
 class CreateOrder(BaseTokenView):
     def post(self, request):
         try :
@@ -1100,7 +1242,6 @@ class CreateOrder(BaseTokenView):
             if serializer.is_valid():
                 order = serializer.save()  # Create order
                 
-                # Update product quantities
                 for item_data in request.data.get('items', []):
                     product_id = item_data.get('product')
                     name = item_data.get('name')
@@ -1270,9 +1411,9 @@ class ProductAttributeCreate(BaseTokenView):
 class ProductAttributeListView(BaseTokenView):
     def get(self, request):
         try:
-            # authUser, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
             
             attributes = Attributes.objects.all()
             serializer = AttributesModelSerializer(attributes, many=True)
@@ -1331,32 +1472,29 @@ class ProductAttributeCreateValue(BaseTokenView):
         if error_response:
             return error_response
 
-        if not authUser:
-            return Response({"status": "error", "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Log the incoming request data
-        logger.info(f"User {authUser.id} is creating a new attribute value with data: {request.data}")
-
-        # Validate the incoming data
         serializer = ProductAttributeModelSerilizer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             logger.info(f"Attribute value created successfully: {serializer.data}")
             return Response({"status": "success", "message": "Attribute value created successfully"}, status=status.HTTP_201_CREATED)
-        
-        # Log validation errors
-        logger.warning(f"Validation errors occurred: {serializer.errors}")
+        print(serializer.errors)
         return Response({"status": "error", "message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
-    def handle_exception(self, exc):
-        if isinstance(exc, ObjectDoesNotExist):
-            logger.error(f"Object not found: {str(exc)}")
-            return Response({"status": "error", "message": "Object not found"}, status=status.HTTP_404_NOT_FOUND)
-        if isinstance(exc, DatabaseError):
-            logger.error(f"Database error occurred: {str(exc)}")
-            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        logger.error(f"Unexpected error: {str(exc)}")
-        return super().handle_exception(exc)
+            attributes_values = ProductAttribute.objects.all()
+            serializer = ProductAttributeModelSerilizer(attributes_values, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e :
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
             
         
 
@@ -1373,7 +1511,7 @@ class ProductAttributeListValue(BaseTokenView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
-            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"status": "error", "message": "Attribute not found"}, status=status.HTTP_404_NOT_FOUND)
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
@@ -1391,12 +1529,6 @@ class ProductAttributeValueDelete(APIView):
             
             attribute_value.delete()
             return Response({"status": "success", "message": "Attribute value deleted"}, status=status.HTTP_200_OK)
-        
-        except ObjectDoesNotExist:
-            return Response({"status": "error", "message": "Object not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        except DatabaseError:
-            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         except Exception as e:
             return Response({"status": "error", "message": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
