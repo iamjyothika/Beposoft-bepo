@@ -20,6 +20,7 @@ admin.site.register(Order)
 admin.site.register(OrderItem)
 admin.site.register(ProductAttributeVariant)
 admin.site.register(VariantImages)
+admin.site.register(BeposoftCart)
 
 
 

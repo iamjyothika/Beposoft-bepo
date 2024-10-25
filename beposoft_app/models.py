@@ -89,12 +89,13 @@ class User(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if self.pk is None or 'password' in kwargs:  
-            if 'password' in kwargs:
-                self.password = make_password(kwargs['password'])
-            elif self._state.adding or not self.pk:  
-                self.password = make_password(self.password)
+        # Hash password if provided
+        if 'password' in kwargs:
+            self.password = make_password(kwargs['password'])
+        elif not self.pk and self.password:  # Hash password for new user
+            self.password = make_password(self.password)
 
+        # Generate unique eid if not already set
         if not self.eid:
             self.eid = self.generate_unique_eid()
 
@@ -115,7 +116,7 @@ class User(models.Model):
 
 class Attributes(models.Model):
     created_user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)  # ex COLOR SIZE 
+    name = models.CharField(max_length=100) 
 
     def __str__(self):
         return self.name
@@ -279,7 +280,15 @@ class ProductAttributeVariant(models.Model):
     def __str__(self):
         return f"{self.variant_product.name} - {self.attribute}"
     
-    
+class Bank(models.Model):
+    created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
+    name = models.CharField(max_length=100)
+    account_number = models.CharField(max_length=100)
+    ifsc_code = models.CharField(max_length=100)
+    branch = models.CharField(max_length=100)
+    open_balance = models.FloatField()
+    class Meta:
+        db_table = "Bank"
 
 
 
@@ -287,7 +296,7 @@ class ProductAttributeVariant(models.Model):
 class Order(models.Model):
     COMPANY_CHOICES = [
         ('MICHEAL IMPORT EXPORT PVT LTD', 'MICHEAL IMPORT EXPORT PVT LTD'),
-        ('BEPOSOFT PVT LTD', 'BEPOSOFT PVT  LTD'),
+        ('BEPOSITIVERACING PVT LTD', 'BEPOSITIVERACING PVT  LTD'),
     ]
 
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -295,9 +304,15 @@ class Order(models.Model):
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE)
     invoice = models.CharField(max_length=20, unique=True, blank=True)
     billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE)
-    order_date = models.DateField(auto_now_add=True)
+    order_date = models.CharField(max_length=100)
+    payment_status = models.CharField(max_length=20, choices=[
+        ('payed', 'payed'),
+        ('COD', 'COD'),
+        ('credit', 'credit'),
+    ], default='payed')
     status = models.CharField(max_length=20, choices=[
         ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
         ('Shipped', 'Shipped'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
@@ -325,7 +340,7 @@ class Order(models.Model):
         prefix = ""
         if self.company == 'MICHEAL IMPORT EXPORT PVT LTD':
             prefix = "MI-"
-        elif self.company == 'BEPOSOFT PVT LTD':
+        elif self.company == 'BEPOSITIVERACING PVT LTD':
             prefix = "BR-"
         
         number = self.get_next_invoice_number(prefix)
@@ -384,7 +399,7 @@ class OrderItem(models.Model):
 class BeposoftCart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
+    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True,blank=True,)
     size = models.ForeignKey(ProductAttributeVariant,on_delete=models.CASCADE, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
     discount = models.IntegerField(null=True, blank=True)

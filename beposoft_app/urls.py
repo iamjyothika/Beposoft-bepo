@@ -52,7 +52,7 @@ urlpatterns = [
     path('api/supervisor/update/<int:pk>/',SupervisorUpdateView.as_view(),name="supervisor-update"),# completed
 
 
-    path('api/add/cutomer/address/<int:pk>/',ShippingCreateView.as_view(),name="add-customer-address"),# completed
+    path('api/add/customer/address/<int:pk>/',ShippingCreateView.as_view(),name="add-customer-address"),# completed
     path('api/update/cutomer/address/<int:pk>/',CustomerShippingAddressUpdate.as_view(),name="address-update"), 
 
 
@@ -78,7 +78,6 @@ urlpatterns = [
     path('api/product/attribute/delete/<int:pk>/values/',ProductAttributeValueDelete.as_view(),name="delete-product-attribute-values"),
 
 
-    path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
     path('api/order/create/', CreateOrder.as_view(), name='create-order'),
     path('api/orders/', OrderListView.as_view(), name='orders'),
     path('api/order/<int:order_id>/items/', CustomerOrderItems.as_view(), name='order-items'),
@@ -86,18 +85,14 @@ urlpatterns = [
 
 
     path('api/staff/orders/', CustomerOrderList.as_view(), name='staff-orders'), # staff based orders
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+    
+    
+    path('api/staff/customers/',StaffCustomersView.as_view(),name="staff-customers"),
+    path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
+    path('api/cart/products/',StaffcartStoredProductsView.as_view()),
+    path('api/cart/update/<int:pk>/',StaffDeleteCartProduct.as_view()),
+    
+    
 ]
 

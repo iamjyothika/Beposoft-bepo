@@ -160,15 +160,18 @@ class CreateUserView(BaseTokenView):
             if error_response:
                 return error_response
             
+            allocated_states = request.data.getlist('allocated_states', [])
+            print(f"Allocated States Received: {allocated_states}") 
+            
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                print("Response data    :",serializer.data)
                 return Response({"data": serializer.data, "message": "User created successfully"}, status=status.HTTP_201_CREATED)
-            column_errors = {field: error for field, error in serializer.errors.items()}
-            return Response({"status": "error", "message": "Validation failed","errors": column_errors }, status=status.HTTP_400_BAD_REQUEST)
+            print(serializer.errors)
+            return Response({"status": "error", "message": "Validation failed","errors": serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
-            print(e)
             return Response({ "status": "error", "message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -225,6 +228,14 @@ class UserDataUpdate(BaseTokenView):
                 return error_response
 
             user = self.get_user(pk)
+            
+            allocated_states = request.data.getlist('allocated_states', [])
+            print(f"Allocated States Received: {allocated_states}") 
+            
+            # If the password is provided, hash it
+            if 'password' in request.data:
+                request.data['password'] = make_password(request.data['password'])
+                
             serializer = UserUpdateSerilizers(user, data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -302,16 +313,16 @@ class CustomerUpdateView(BaseTokenView):
                 return error_response
 
             customer = self.get_customer(pk)
+            
+            
+            
             serializer = CustomerSerilizers(customer, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data, "message": "Customer updated successfully"}, status=status.HTTP_200_OK)
-            
-            print(serializer.errors)
             return Response({"status": "error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         except Exception as e:
-            print(e)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
@@ -1171,6 +1182,7 @@ class VariantProductsSizeDelete(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return Response({"message": "Size updated successfully", "size": serializer.data}, status=status.HTTP_200_OK)
+            print(serializer.errors)
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             # Log the exception details
@@ -1178,58 +1190,6 @@ class VariantProductsSizeDelete(APIView):
             return Response({"message": "An error occurred while updating the size"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-class Cart(BaseTokenView):
-    PRODUCT_TYPE_SINGLE = 'single'
-    
-    def post(self, request):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-            
-            product = get_object_or_404(Products, pk=request.data['product'])
-            
-            if product.type == self.PRODUCT_TYPE_SINGLE:
-                return self.add_single_product_to_cart(product, authUser)
-            else:
-                if 'variant' not in request.data:
-                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Attempt to retrieve the variant, returning a 404 error if not found
-                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
-                
-                # Proceed to add the variant product to the cart
-                return self.add_variant_product_to_cart(product, variant, request, authUser)
-        
-        except KeyError as e:
-            return Response({"status": "error", "message": "Missing field", "errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(e)
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    def add_single_product_to_cart(self, product, user):
-        """Add a single product to the cart."""
-        BeposoftCart.objects.create(product=product, user=user)
-        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
-
-    def add_variant_product_to_cart(self, product, variant, request, user):
-        """Add a variant product to the cart."""
-        # Check if the size is provided in the request
-        if 'size' not in request.data:
-            return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Attempt to retrieve the size
-        size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
-
-        if not variant.is_variant:
-            BeposoftCart.objects.create(product=product, variant=variant, user=user)
-        else:
-            BeposoftCart.objects.create(product=product, variant=variant, user=user, size=size)
-        
-        return Response({"status": "success", "message": " product added to cart"}, status=status.HTTP_201_CREATED)
-    
-    
     
 class CreateOrder(BaseTokenView):
     def post(self, request):
@@ -1532,5 +1492,134 @@ class ProductAttributeValueDelete(APIView):
         
         except Exception as e:
             return Response({"status": "error", "message": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+class StaffCustomersView(BaseTokenView):
+    def get(self,request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            customers = Customers.objects.filter(manager = authUser)
+            if not customers:
+                return Response({"status": "error", "message": "No customers found"}, status=status.HTTP_404_NOT_FOUND)
             
+            serializer = CustomerModelSerializer(customers, many=True)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+        
+        except Exception as e :
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+
+class Cart(BaseTokenView):
+    PRODUCT_TYPE_SINGLE = 'single'
+    
+    def post(self, request):
+        try:
+            print(f"Request data: {request.data}")
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            product = get_object_or_404(Products, pk=request.data.get("product"))
+            quantity = request.data.get("quantity")
+            print(quantity)
+            
+            if product.type == self.PRODUCT_TYPE_SINGLE:
+                return self.add_single_product_to_cart(product, quantity, authUser)
+            else:
+                if 'variant' not in request.data:
+                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
                 
+                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
+                
+                return self.add_variant_product_to_cart(product, variant, quantity, request, authUser)
+        
+        except KeyError as e:
+            return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def add_single_product_to_cart(self, product, quantity, user):
+        """Add a single product to the cart."""
+        BeposoftCart.objects.create(product=product, user=user, quantity=quantity)
+        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
+
+    def add_variant_product_to_cart(self, product, variant, quantity, request, user):
+        """Add a variant product to the cart."""
+        if variant.is_variant:
+            if 'size' not in request.data:
+                return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
+            BeposoftCart.objects.create(product=product, quantity=quantity, variant=variant, user=user, size=size)
+        else:
+            BeposoftCart.objects.create(product=product, quantity=quantity, variant=variant, user=user)
+        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
+
+    
+
+
+
+class StaffDeleteCartProduct(BaseTokenView):
+    
+    def put(self,request,pk):
+        try :
+
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+
+            cartItem = get_object_or_404(BeposoftCart, pk=pk)
+            serializer = BepocartSerializers(cartItem, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Cart item updated successfully."}, status=status.HTTP_200_OK)
+            return Response({"status" : "error","message":serializer.errors}, status=status.HTTP_200_OK)
+        
+        except Exception as e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def delete(self, request, pk):
+        try:
+            # Authenticate user from token
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            cartItem = get_object_or_404(BeposoftCart, pk=pk)
+            cartItem.delete()
+            return Response({"status": "success", "message": "Cart item deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            # Handle exceptions and return error response
+            print(e)
+            return Response({"status": "error", "message": "An error occurred while deleting the cart item.", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    
+    
+
+class StaffcartStoredProductsView(BaseTokenView):
+    def get(self,request):
+        try :
+        
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            staffItems = BeposoftCart.objects.filter(user = authUser)
+            serializers = BepocartSerializersView(staffItems, many=True)
+            return Response({"data":serializers.data},status=status.HTTP_200_OK)
+        
+        except Exception as  e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+        
+        

@@ -57,8 +57,8 @@ class UserSerializer(serializers.ModelSerializer):
         if User.objects.filter(username=data['username']).exists():
             raise serializers.ValidationError("A user with this username already exists")
         
-        if User.objects.filter(alternate_number = data['alternate_number']).exists():
-            raise serializers.ValidationError("A user with this alternate number already exists")
+        # if User.objects.filter(alternate_number = data['alternate_number']).exists():
+        #     raise serializers.ValidationError("A user with this alternate number already exists")
         
         return data
 
@@ -384,6 +384,83 @@ class BepocartSerializers(serializers.ModelSerializer):
     class Meta :
         model = BeposoftCart
         fields = "__all__"
+        
+        
+        
+class BepocartSerializersView(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+    tax = serializers.SerializerMethodField()
+    rate = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BeposoftCart
+        fields = [
+            "id",
+            "product",
+            "variant",
+            "size",
+            "discount",
+            "quantity",
+            "created_at",
+            "name",
+            "images",
+            "price",
+            "note",
+            "tax",
+            "rate"
+        ]
+
+    def get_name(self, obj):
+        # Check if the product is a single or variant type
+        if obj.product.type == "single":
+            return obj.product.name
+        elif obj.variant:
+            return obj.variant.name
+        return None
+    
+    
+    def get_tax(self,obj):
+        return obj.product.tax
+    
+    def get_rate(self,obj):
+        return obj.product.purchase_rate
+        
+        
+
+    def get_images(self, obj):
+        # Return a list of images based on the product type
+        image_urls = []
+        
+        if obj.product.type == "single":
+            # Fetch all images from the SingleProducts model for this product
+            single_images = SingleProducts.objects.filter(product=obj.product)
+            image_urls = [single_image.image.url for single_image in single_images if single_image.image]
+        
+        elif obj.variant:
+            # Fetch all images from the VariantImages model for this variant
+            variant_images = VariantImages.objects.filter(variant_product=obj.variant)
+            image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
+
+        return image_urls if image_urls else None
+
+
+    def get_price(self, obj):
+        # Get the price based on the product type
+        if obj.product.type == "single":
+            return obj.product.selling_price
+        elif obj.variant :
+            # Assuming variant price should be handled separately if needed
+            return obj.product.selling_price  # or use a different field for variant price
+        return None
+
+    def get_size(self, obj):
+        # Return the size name if the variant has a size
+        if obj.variant and obj.variant.is_variant:
+            return obj.size.attribute if obj.size else None
+        return None
 
 
 
