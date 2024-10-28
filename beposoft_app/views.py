@@ -1191,60 +1191,73 @@ class VariantProductsSizeDelete(APIView):
 
 
     
+
 class CreateOrder(BaseTokenView):
     def post(self, request):
-        try :
+        try:
+            # Authenticate user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-                
+            
+            # Retrieve cart items and validate serializer
+            cart_items = BeposoftCart.objects.filter(user=authUser)
             serializer = OrderSerializer(data=request.data)
-            if serializer.is_valid():
-                order = serializer.save()  # Create order
+            if not serializer.is_valid():
+                return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+            order = serializer.save()  # Create order
+            
+            for item_data in cart_items:
+                product = get_object_or_404(Products, pk=item_data.product.pk)
+
+                # Convert values to Decimal for consistency
+                quantity = Decimal(item_data.quantity)
+                selling_price = Decimal(item_data.product.selling_price)
+                discount = Decimal(item_data.discount or 0)
+                tax = Decimal(item_data.product.tax or 0)
+                rate = Decimal(item_data.product.selling_price or 0)
+
                 
-                for item_data in request.data.get('items', []):
-                    product_id = item_data.get('product')
-                    name = item_data.get('name')
-                    quantity = item_data.get('quantity')
 
+                # Check stock and decrement
+                if product.type == 'single':
+                    if product.stock < quantity:
+                        return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
+                    product.stock -= int(quantity)
+                    product.save()
+                
+                elif product.type == 'variant':
+                    variant_product = get_object_or_404(VariantProducts, pk=item_data.variant.pk)
+                    stock_item = get_object_or_404(ProductAttributeVariant, pk=item_data.size.pk) if variant_product.is_variant else variant_product
                     
-                    product_type = Products.objects.filter(pk=product_id).first() 
-                    if not product_type:
-                        return Response({"status": "error", "message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+                    if stock_item.stock < quantity:
+                        return Response({"status": "error", "message": "Insufficient stock for variant product"}, status=status.HTTP_400_BAD_REQUEST)
+                    stock_item.stock -= int(quantity)
+                    stock_item.save()
 
-
-                    if product_type.type == 'single':
-                        try:
-                            single_product = SingleProducts.objects.get(product=product_type,product__name=name)
-                            if single_product.stock < quantity:
-                                return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
-                            single_product.stock -= quantity
-                            single_product.save()
-                        except SingleProducts.DoesNotExist:
-                            return Response({"status": "error", "message": "Single product not found"}, status=status.HTTP_404_NOT_FOUND)
-                    
-                    elif product_type.type == 'variant':
-                        try:
-                            variant_product = VariantProducts.objects.get(product=product_type,name=name)
-                            if variant_product.stock < quantity:
-                                return Response({"status": "error", "message": "Insufficient stock for variant product"}, status=status.HTTP_400_BAD_REQUEST)
-                            variant_product.stock -= quantity
-                            variant_product.save()
-                        except VariantProducts.DoesNotExist:
-                            return Response({"status": "error", "message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
-                    
-                    else:
-                        return Response({"status": "error", "message": "Invalid product type"}, status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
-
-            return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                # Create order item for each valid cart item
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    variant=item_data.variant,
+                    size=item_data.size,
+                    quantity=int(quantity),
+                    net_price=selling_price,
+                    price= selling_price - discount,
+                    discount=discount,
+                    tax=tax,
+                    rate=rate,
+                    description=item_data.note,
+                )
+            
+            # Clear cart after successful order creation
+            cart_items.delete()
+            return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         except Exception as e:
+            logger.error("Unexpected error in CreateOrder view: %s", str(e))
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
 
 class OrderListView(BaseTokenView):
     def get(self, request):
@@ -1622,4 +1635,66 @@ class StaffcartStoredProductsView(BaseTokenView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
         
+class CreateBankAccountView(BaseTokenView):
+    def post(self,request):
+        try :
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            serializer = BankSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(created_user =authUser)
+                return Response({"status": "success", "message": "Bank created successfully."}, status=status.HTTP_201_CREATED)
+            return Response({"status" : "error","message":serializer.errors}, status=status.HTTP_200_OK)
+
+        except Exception as e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        
+        
+class BankView(BaseTokenView):
+    def get(self,request):
+        try :
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            banks = Bank.objects.all()
+            serializer = BankSerializer(banks, many=True)
+            return Response({"data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as  e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class BankAccountView(BaseTokenView):
+    def get(self,request):
+        try :
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            bankAccount = Bank.objects.filter(user = authUser)
+            serializer = BankSerializer(bankAccount, many=True)
+            return Response({"data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as  e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def put(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            bank = get_object_or_404(Bank, pk=pk)
+            serializer = BankSerializer(bank, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success"}, status=status.HTTP_200_OK)
+            return Response({"error":serializer.errors})
+        except Exception as e :
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
+
+

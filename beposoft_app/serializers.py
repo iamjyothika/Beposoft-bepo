@@ -336,19 +336,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'name', 'description', 'rate', 'tax', 'quantity', 'price']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)  # Nested serializer for order items
-
+    
     class Meta:
         model = Order
-        fields = ['company', 'customer', 'billing_address', 'status', 'total_amount', 'payment_method','manage_staff', 'items']
-
-    def create(self, validated_data):
-        items_data = validated_data.pop('items', [])
-        order = Order.objects.create(**validated_data)
-        for item_data in items_data:
-            OrderItem.objects.create(order=order, **item_data)
-        return order
-    
+        fields = "__all__"
 
 
 class OrderModelSerilizer(serializers.ModelSerializer):
@@ -466,7 +457,10 @@ class BepocartSerializersView(serializers.ModelSerializer):
 
 
 
-
+class BankSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bank
+        fields = "__all__"
 
 
 

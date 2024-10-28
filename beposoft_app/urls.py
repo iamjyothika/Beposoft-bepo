@@ -94,5 +94,13 @@ urlpatterns = [
     path('api/cart/update/<int:pk>/',StaffDeleteCartProduct.as_view()),
     
     
+    
+    
+    path('api/add/bank/',CreateBankAccountView.as_view()),
+    path('api/banks/',BankView.as_view()),
+    path('api/bank/view/<int:pk>/',BankView.as_view()),
+    
+    
+    
 ]
 
