@@ -289,6 +289,10 @@ class Bank(models.Model):
     open_balance = models.FloatField()
     class Meta:
         db_table = "Bank"
+        
+    def  __str__(self):
+        return self.name
+
 
 
 
@@ -301,12 +305,15 @@ class Order(models.Model):
 
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
     company = models.CharField(max_length=100, choices=COMPANY_CHOICES, default='MICHEAL IMPORT EXPORT PVT LTD')
-    customer = models.ForeignKey(Customers, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
-    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE)
+    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE,related_name="billing_address")
     order_date = models.CharField(max_length=100)
     family = models.ForeignKey(Family, on_delete=models.CASCADE)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
+    code_charge = models.IntegerField(default=0,null=True)
+    shipping_mode = models.CharField(max_length=100)
+    shipping_charge = models.IntegerField(default=0,null=True)
     payment_status = models.CharField(max_length=20, choices=[
         ('payed', 'payed'),
         ('COD', 'COD'),
@@ -323,7 +330,7 @@ class Order(models.Model):
         ('Return', 'Return'),
     ], default='Pending')
     total_amount = models.FloatField()
-    bank = models.CharField(max_length=100)
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="bank")
     payment_method = models.CharField(max_length=50, choices=[
         ('Credit Card', 'Credit Card'),
         ('Debit Card', 'Debit Card'),
@@ -372,32 +379,15 @@ class OrderItem(models.Model):
     variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
     size = models.ForeignKey(ProductAttributeVariant, on_delete=models.CASCADE,null=True)
     description = models.CharField(max_length=100,null=True)
-    rate = models.CharField(max_length = 200)  # without GST
+    rate = models.IntegerField()  # without GST
     tax = models.PositiveIntegerField()  # tax percentage
-    discount = models.CharField(max_length=10, null=True)
-    net_price = models.CharField(max_length=100)  # taxable amount
+    discount = models.IntegerField(default=0, null=True)
     quantity = models.PositiveIntegerField()
-    price = models.CharField(max_length=10,)  # price per unit
 
     def __str__(self):
         return f"{self.product.name} (x{self.quantity})"
 
-    @property
-    def total_price(self):
-        return self.quantity * self.price
-
-    def calculate_net_price(self):
-        net_price = self.rate / (1 + Decimal(self.tax) / 100)
-        return net_price
-
-    def calculate_total(self):
-        return self.quantity * self.price
-
-    def save(self, *args, **kwargs):
-        self.net_price = self.calculate_net_price()
-        self.total = self.calculate_total()
-        super().save(*args, **kwargs)
-        
+    
         
         
         

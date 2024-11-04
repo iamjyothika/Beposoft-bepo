@@ -327,6 +327,12 @@ class SingleProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = SingleProducts
         fields = "__all__"
+        
+        
+class ExistedOrderAddProductsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = "__all__"
     
 
 
@@ -336,23 +342,87 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'name', 'description', 'rate', 'tax', 'quantity', 'price']
 
 class OrderSerializer(serializers.ModelSerializer):
-    
     class Meta:
         model = Order
+        fields = "__all__"
+        
+class BankSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bank
         fields = "__all__"
 
 
 class OrderModelSerilizer(serializers.ModelSerializer):
+    manage_staff = serializers.CharField(source="manage_staff.name")
+    family = serializers.CharField(source="family.name")
+    bank  = BankSerializer(read_only=True)
+    billing_address = ShippingAddressView(read_only=True)
+    customer = CustomerSerilizers(read_only=True)
+    
     class Meta:
         model = Order
-        fields = '__all__'
+        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method"]
 
 
 
+        
 class OrderItemModelSerializer(serializers.ModelSerializer):
+    images = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    actual_price = serializers.SerializerMethodField()
+    exclude_price = serializers.SerializerMethodField()
+    
     class Meta:
         model = OrderItem
-        fields = '__all__'
+        fields = [
+            "id",
+            "name",
+            "order",
+            "product",
+            "variant",
+            "size",
+            "description",
+            "rate",
+            "tax",
+            "discount",
+            "quantity",
+            "actual_price",
+            "exclude_price",
+            "images"
+        ]
+        
+        
+    def get_name(self, obj):
+        # Check if the product is a single or variant type
+        if obj.product.type == "single":
+            return obj.product.name
+        elif obj.variant:
+            return obj.variant.name
+        return None
+    
+    def get_actual_price(self, obj):
+        # Calculate the actual price based on the product type
+        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
+    
+    def get_exclude_price(self, obj):
+        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
+    
+
+    def get_images(self, obj):
+        # Return a list of images based on the product type
+        image_urls = []
+
+        if obj.product.type == "single":
+            # Fetch all images from the SingleProducts model for this product
+            single_images = SingleProducts.objects.filter(product=obj.product)
+            image_urls = [single_image.image.url for single_image in single_images if single_image.image]
+
+        elif obj.variant:
+            # Fetch all images from the VariantImages model for this variant
+            variant_images = VariantImages.objects.filter(variant_product=obj.variant)
+            image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
+
+        return image_urls if image_urls else None
 
 
 
@@ -385,6 +455,7 @@ class BepocartSerializersView(serializers.ModelSerializer):
     size = serializers.SerializerMethodField()
     tax = serializers.SerializerMethodField()
     rate = serializers.SerializerMethodField()
+    exclude_price = serializers.SerializerMethodField()
 
     class Meta:
         model = BeposoftCart
@@ -401,7 +472,8 @@ class BepocartSerializersView(serializers.ModelSerializer):
             "price",
             "note",
             "tax",
-            "rate"
+            "rate",
+            "exclude_price"
         ]
 
     def get_name(self, obj):
@@ -411,6 +483,9 @@ class BepocartSerializersView(serializers.ModelSerializer):
         elif obj.variant:
             return obj.variant.name
         return None
+    
+    def get_exclude_price(self,obj):
+        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
     
     
     def get_tax(self,obj):
@@ -457,10 +532,7 @@ class BepocartSerializersView(serializers.ModelSerializer):
 
 
 
-class BankSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Bank
-        fields = "__all__"
+
 
 
 

@@ -15,6 +15,8 @@ from django.contrib.auth import authenticate
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DatabaseError
+from decimal import Decimal
+
 
 
 class UserRegistrationAPIView(APIView):
@@ -1359,6 +1361,30 @@ class CustomerOrderStatusUpdate(BaseTokenView):
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class ShippingManagementView(BaseTokenView):
+    def put(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            order = Order.objects.filter(pk=pk).first()
+            if not order:
+                return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = OrderSerializer(order, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Order updated successfully"}, status=status.HTTP_200_OK)
+            print(serializer.errors)
+            return Response({"status": "error", "message": "Invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
         
@@ -1694,7 +1720,146 @@ class BankAccountView(BaseTokenView):
             return Response({"error":serializer.errors})
         except Exception as e :
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+class ExistedOrderAddProducts(BaseTokenView):
+    PRODUCT_TYPE_SINGLE = 'single'
+    
+    def post(self, request, pk):
+        try:
+            print(f"Request data: {request.data}")
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Retrieve the order instance using the primary key (pk)
+            order = get_object_or_404(Order, pk=pk)
+            print(f"Order: {order}")
+            product = get_object_or_404(Products, pk=request.data.get("product"))
+            quantity = request.data.get("quantity")
+            if quantity is None:
+                return Response({"status": "error", "message": "Quantity is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            print(f"Product: {product}, Quantity: {quantity}")
+
+            if product.type == self.PRODUCT_TYPE_SINGLE:
+                return self.add_single_product_to_cart(product, order, quantity)
+            else:
+                if 'variant' not in request.data:
+                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
+                return self.add_variant_product_to_cart(product, variant, quantity, order, request)
+        
+        except KeyError as e:
+            return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def add_single_product_to_cart(self, product, order, quantity):
+        """Add a single product to the cart."""
+        OrderItem.objects.create(
+            product=product,            # Pass the Product instance
+            rate=product.selling_price,  # Set rate based on product
+            order=order,                 # Pass the Order instance directly
+            quantity=quantity,
+            tax = product.tax,
+        )
+        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
+
+    def add_variant_product_to_cart(self, product, variant, quantity, order, request):
+        """Add a variant product to the cart."""
+        if variant.is_variant:
+            if 'size' not in request.data:
+                return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
             
+            size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
+            OrderItem.objects.create(
+                product=product,        # Product instance
+                order=order,            # Order instance
+                quantity=quantity, 
+                variant=variant, 
+                size=size,
+                tax = product.tax,
+                rate = product.selling_price,
+                
+            )
+        else:
+            OrderItem.objects.create(
+                product=product,        # Product instance
+                order=order,            # Order instance
+                quantity=quantity, 
+                variant=variant,
+                tax = product.tax,
+                rate = product.selling_price,
+                
+                
+                
+            )
+        
+        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
+    
+class RemoveExistsOrderItems(BaseTokenView):
+    
+    def get_order_item(self, pk):
+        try:
+            order_item = get_object_or_404(OrderItem, pk=pk)
+
+            return order_item
+        except OrderItem.DoesNotExist:
+            return None
+    def delete(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            order_item = self.get_order_item(pk)
+            if not order_item:
+                return Response({"status": "error", "message": "Order item not found"}, status=status.HTTP_404_NOT_FOUND)
+            order_item.delete()
+            return Response({"status": "success"}, status=status.HTTP_200_OK)
+        except Exception as e :
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def put(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+                        
+            item = self.get_order_item(pk)
+            if not item:
+                return Response({"status": "error", "message": "Order item not found"}, status=status.HTTP_404_NOT_FOUND)
+            serializer = ExistedOrderAddProductsSerializer(item, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Order item updated successfully"}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": "Invalid data provided"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e :
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class OrderTotalAmountSave(BaseTokenView):
+    def put(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
             
+            order = get_object_or_404(Order, pk=pk)
+            serializer = OrderSerializer(order, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Order updated successfully"}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": "Invalid data provided"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e :
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+
+
+        

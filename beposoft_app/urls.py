@@ -80,8 +80,12 @@ urlpatterns = [
 
     path('api/order/create/', CreateOrder.as_view(), name='create-order'),
     path('api/orders/', OrderListView.as_view(), name='orders'),
+    
     path('api/order/<int:order_id>/items/', CustomerOrderItems.as_view(), name='order-items'),
     path('api/order/status/update/<int:pk>/', CustomerOrderStatusUpdate.as_view(), name='status-update-order'),
+    path('api/shipping/<int:pk>/order/',ShippingManagementView.as_view(),name = "shipping-management"),
+    path('api/add/order/<int:pk>/product/',ExistedOrderAddProducts.as_view()),
+    path('api/remove/order/<int:pk>/item/',RemoveExistsOrderItems.as_view()),
 
 
     path('api/staff/orders/', CustomerOrderList.as_view(), name='staff-orders'), # staff based orders
@@ -98,7 +102,7 @@ urlpatterns = [
     
     path('api/add/bank/',CreateBankAccountView.as_view()),
     path('api/banks/',BankView.as_view()),
-    path('api/bank/view/<int:pk>/',BankView.as_view()),
+    path('api/bank/view/<int:pk>/',BankAccountView.as_view()),
     
     
     
