@@ -1269,8 +1269,7 @@ class OrderListView(BaseTokenView):
                 return error_response
 
             orders = Order.objects.all()
-            if not orders.exists():
-                return Response({"status": "error", "message": "No orders found"}, status=status.HTTP_404_NOT_FOUND)
+           
 
             serializer = OrderModelSerilizer(orders, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
