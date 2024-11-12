@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .invoice-box { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); }
+        .company-details, .customer-details, .product-details, .summary, .bank-details { margin-bottom: 20px; }
+        .title { font-size: 24px; text-align: center; font-weight: bold; margin-bottom: 20px; }
+        table { width: 100%; }
+        th { background-color: #f2f2f2; padding: 8px; text-align: left; }
+        td { padding: 8px; }
+        .footer { text-align: center; font-size: 12px; color: #555; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <!-- Company Details -->
+        <div class="company-details">
+            <strong>{{ company_name }}</strong><br>
+            {{ company_address }}<br>
+            Contact: {{ company_contact }}, Email: {{ company_email }}<br>
+            GSTIN: {{ gstin }}
+        </div>
+
+        <!-- Invoice Information -->
+        <div class="title">Invoice</div>
+        <table>
+            <tr>
+                <td>Invoice #: {{ invoice_number }}</td>
+                <td style="text-align: right;">Date: {{ invoice_date }}</td>
+            </tr>
+        </table>
+
+        <!-- Customer Details -->
+        <div class="customer-details">
+            <strong>Bill to:</strong><br>
+            {{ customer_name }}<br>
+            {{ customer_address }}<br>
+            State: {{ customer_state }}<br>
+            Pin: {{ customer_pin }}<br>
+            Phone: {{ customer_phone }}
+        </div>
+
+        <!-- Product Table -->
+        <table class="product-details" border="1" cellspacing="0">
+            <tr>
+                <th>Description</th>
+                <th>HSN Code</th>
+                <th>Rate</th>
+                <th>Tax Rate</th>
+                <th>Tax Amount</th>
+                <th>Qty</th>
+                <th>Amount</th>
+            </tr>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.description }}</td>
+                <td>{{ product.hsn_code }}</td>
+                <td>{{ product.rate }}</td>
+                <td>{{ product.tax_rate }}</td>
+                <td>{{ product.tax_amount }}</td>
+                <td>{{ product.quantity }}</td>
+                <td>{{ product.amount }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <!-- Summary -->
+        <div class="summary">
+            Net Amount Before Tax: {{ net_amount_before_tax }}<br>
+            Total Tax Amount: {{ total_tax_amount }}<br>
+            Discounted Amount: {{ discounted_amount }}<br>
+            Shipping Charge: {{ shipping_charge }}<br>
+            <strong>Total Payable Amount: {{ total_payable_amount }}</strong><br>
+            Advance Paid: {{ advance_paid }}<br>
+            Balance: {{ balance }}
+        </div>
+
+        <!-- Bank Details -->
+        <div class="bank-details">
+            <strong>Bank Details:</strong><br>
+            A/C Name: {{ bank_details.account_name }}<br>
+            Bank A/C: {{ bank_details.account_number }}<br>
+            Bank Name: {{ bank_details.bank_name }}<br>
+            IFSC: {{ bank_details.ifsc }}<br>
+            Branch: {{ bank_details.branch }}
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">{{ footer }}</div>
+    </div>
+</body>
+</html>

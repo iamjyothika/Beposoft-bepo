@@ -87,11 +87,7 @@ urlpatterns = [
     path('api/add/order/<int:pk>/product/',ExistedOrderAddProducts.as_view()),
     path('api/remove/order/<int:pk>/item/',RemoveExistsOrderItems.as_view()),
 
-
-    path('api/staff/orders/', CustomerOrderList.as_view(), name='staff-orders'), # staff based orders
-    
-    
-    
+        
     path('api/staff/customers/',StaffCustomersView.as_view(),name="staff-customers"),
     path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
     path('api/cart/products/',StaffcartStoredProductsView.as_view()),
@@ -103,6 +99,17 @@ urlpatterns = [
     path('api/add/bank/',CreateBankAccountView.as_view()),
     path('api/banks/',BankView.as_view()),
     path('api/bank/view/<int:pk>/',BankAccountView.as_view()),
+    
+    
+    path('api/payment/<int:pk>/reciept/',CreateReceiptAgainstInvoice.as_view()),
+    path('api/customer/<int:pk>/ledger/',CustomerOrderLedgerdata.as_view()),
+    
+    
+    
+    
+    path('api/perfoma/invoice/create/',CreatePerfomaInvoice.as_view()),
+    path('api/perfoma/invoices/',PerfomaInvoiceListView.as_view()),
+    path('api/perfoma/<str:invoice>/invoice/',PerfomaInvoiceDetailView.as_view())
     
     
     

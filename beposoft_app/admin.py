@@ -22,6 +22,10 @@ admin.site.register(ProductAttributeVariant)
 admin.site.register(VariantImages)
 admin.site.register(BeposoftCart)
 admin.site.register(Bank)
+admin.site.register(PaymentReceipt)
+admin.site.register(Company)
+
+
 
 
 

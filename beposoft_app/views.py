@@ -1245,8 +1245,6 @@ class CreateOrder(BaseTokenView):
                     variant=item_data.variant,
                     size=item_data.size,
                     quantity=int(quantity),
-                    net_price=selling_price,
-                    price= selling_price - discount,
                     discount=discount,
                     tax=tax,
                     rate=rate,
@@ -1269,8 +1267,6 @@ class OrderListView(BaseTokenView):
                 return error_response
 
             orders = Order.objects.all()
-           
-
             serializer = OrderModelSerilizer(orders, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -1279,30 +1275,10 @@ class OrderListView(BaseTokenView):
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-
-class CustomerOrderList(BaseTokenView):
-    def get(self, request):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-
-            orders = Order.objects.filter(manage_staff=authUser)
-            if not orders.exists():
-                return Response({"status": "error", "message": "No orders found"}, status=status.HTTP_404_NOT_FOUND)
-
-            serializer = OrderModelSerilizer(orders, many=True)
-            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
-
-        except ObjectDoesNotExist:
-            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
-        except DatabaseError:
-            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 
@@ -1325,8 +1301,10 @@ class CustomerOrderItems(BaseTokenView):
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
         except DatabaseError:
+            print(DatabaseError)
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
@@ -1855,10 +1833,157 @@ class OrderTotalAmountSave(BaseTokenView):
             return Response({"status": "error", "message": "Invalid data provided"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e :
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+        
+class CreateReceiptAgainstInvoice(BaseTokenView):
+    def post(self, request, pk):
+        try:
+            # Authenticate user from token
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            order = get_object_or_404(Order, pk=pk)
+            
+            request.data['order'] = order.pk
+            request.data['customer'] = order.customer.pk
+            request.data['created_by'] = authUser.pk
+            
+            serializer = PaymentRecieptSerializers(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Receipt created successfully"}, status=status.HTTP_200_OK)
+
+            print(serializer.errors)
+            return Response({"status": "error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            # Log the exception message for debugging
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class CustomerOrderLedgerdata(BaseTokenView):
+    def get(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            customer = get_object_or_404(Customers, pk=pk)
+            ledger = Order.objects.filter(customer =customer.pk)
+            
+            serializers = LedgerSerializers(ledger, many=True)
+            return Response({"data":serializers.data},status=status.HTTP_200_OK)
+        except Exception as e :
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
+            
+            
 
 
+class CreatePerfomaInvoice(BaseTokenView):
+    def post(self, request):
+        try:
+            # Authenticate user
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            # Retrieve cart items and validate serializer
+            cart_items = BeposoftCart.objects.filter(user=authUser)
+            serializer = PerfomaInvoiceOrderSerializers(data=request.data)
+            if not serializer.is_valid():
+                return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+            order = serializer.save()  # Create order
+            
+            for item_data in cart_items:
+                product = get_object_or_404(Products, pk=item_data.product.pk)
+
+                # Convert values to Decimal for consistency
+                quantity = Decimal(item_data.quantity)
+                selling_price = Decimal(item_data.product.selling_price)
+                discount = Decimal(item_data.discount or 0)
+                tax = Decimal(item_data.product.tax or 0)
+                rate = Decimal(item_data.product.selling_price or 0)
+
+                
+
+                # Check stock and decrement
+                if product.type == 'single':
+                    if product.stock < quantity:
+                        return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
+                    product.stock -= int(quantity)
+                    product.save()
+                
+                elif product.type == 'variant':
+                    variant_product = get_object_or_404(VariantProducts, pk=item_data.variant.pk)
+                    stock_item = get_object_or_404(ProductAttributeVariant, pk=item_data.size.pk) if variant_product.is_variant else variant_product
+                    
+                    if stock_item.stock < quantity:
+                        return Response({"status": "error", "message": "Insufficient stock for variant product"}, status=status.HTTP_400_BAD_REQUEST)
+                    stock_item.stock -= int(quantity)
+                    stock_item.save()
+
+                # Create order item for each valid cart item
+                PerfomaInvoiceOrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    variant=item_data.variant,
+                    size=item_data.size,
+                    quantity=int(quantity),
+                    discount=discount,
+                    tax=tax,
+                    rate=rate,
+                    description=item_data.note,
+                )
+            
+            # Clear cart after successful order creation
+            cart_items.delete()
+            return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            logger.error("Unexpected error in CreateOrder view: %s", str(e))
+            return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class PerfomaInvoiceListView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
+            orders = PerfomaInvoiceOrder.objects.all()
+            serializer = PerfomaInvoiceProductsSerializers(orders, many=True)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class PerfomaInvoiceDetailView(BaseTokenView):
+    def get(self, request, invoice):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            perfoma = PerfomaInvoiceOrder.objects.filter(invoice=invoice).first()
+            if not perfoma:
+                return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_204_NO_CONTENT)
+            
+            serializer = PerfomaInvoiceProductsSerializers(perfoma)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         

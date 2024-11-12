@@ -350,6 +350,14 @@ class BankSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bank
         fields = "__all__"
+        
+
+class PaymentRecieptsViewSerializers(serializers.ModelSerializer):
+    created_by = serializers.CharField(source="created_by.name")
+    bank = serializers.CharField(source="bank.name")
+    class Meta :
+        model = PaymentReceipt
+        fields = '__all__'
 
 
 class OrderModelSerilizer(serializers.ModelSerializer):
@@ -358,12 +366,20 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     bank  = BankSerializer(read_only=True)
     billing_address = ShippingAddressView(read_only=True)
     customer = CustomerSerilizers(read_only=True)
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    customerID = serializers.IntegerField(source="customer.pk")
+
     
     class Meta:
         model = Order
-        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method"]
+        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID"]
 
 
+class LedgerSerializers(serializers.ModelSerializer):
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    class Meta :
+        model = Order
+        fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
 
         
 class OrderItemModelSerializer(serializers.ModelSerializer):
@@ -530,11 +546,96 @@ class BepocartSerializersView(serializers.ModelSerializer):
 
 
 
+class PaymentRecieptSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = PaymentReceipt
+        fields = '__all__'
 
 
 
 
+class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = PerfomaInvoiceOrder
+        fields = '__all__'
+        
+class PerfomaInvoiceProducts(serializers.ModelSerializer):
+    images = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    actual_price = serializers.SerializerMethodField()
+    exclude_price = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PerfomaInvoiceOrderItem
+        fields = [
+            "id",
+            "name",
+            "order",
+            "product",
+            "variant",
+            "size",
+            "description",
+            "rate",
+            "tax",
+            "discount",
+            "quantity",
+            "actual_price",
+            "exclude_price",
+            "images"
+        ]
+        
+        
+    def get_name(self, obj):
+        # Check if the product is a single or variant type
+        if obj.product.type == "single":
+            return obj.product.name
+        elif obj.variant:
+            return obj.variant.name
+        return None
+    
+    def get_actual_price(self, obj):
+        # Calculate the actual price based on the product type
+        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
+    
+    def get_exclude_price(self, obj):
+        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
+    
 
+    def get_images(self, obj):
+        # Return a list of images based on the product type
+        image_urls = []
+
+        if obj.product.type == "single":
+            # Fetch all images from the SingleProducts model for this product
+            single_images = SingleProducts.objects.filter(product=obj.product)
+            image_urls = [single_image.image.url for single_image in single_images if single_image.image]
+
+        elif obj.variant:
+            # Fetch all images from the VariantImages model for this variant
+            variant_images = VariantImages.objects.filter(variant_product=obj.variant)
+            image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
+
+        return image_urls if image_urls else None
+        
+class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
+    manage_staff = serializers.CharField(source="manage_staff.name")
+    family = serializers.CharField(source="family.name")
+    bank  = BankSerializer(read_only=True)
+    billing_address = ShippingAddressView(read_only=True)
+    customer = CustomerSerilizers(read_only=True)
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    customerID = serializers.IntegerField(source="customer.pk")
+    perfoma_items = PerfomaInvoiceProducts(many=True,read_only=True)
+    class Meta:
+        model = PerfomaInvoiceOrder
+        fields = ["id","manage_staff","company","customer",
+                  "invoice","billing_address",
+                  "shipping_mode","code_charge","order_date","family",
+                  "state","payment_status","status","total_amount",
+                  "bank","payment_method","payment_receipts",
+                  "shipping_charge","customerID","perfoma_items"]
+
+        
 
 
         

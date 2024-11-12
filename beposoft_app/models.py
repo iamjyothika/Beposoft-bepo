@@ -162,6 +162,23 @@ class Customers(models.Model):
     
     class Meta :
         db_table = "Customers"
+        
+        
+        
+class Company(models.Model):
+    name = models.CharField(max_length=100)
+    gst = models.CharField(max_length=20)
+    address = models.CharField(max_length=500, null=True)
+    zip = models.IntegerField()
+    city = models.CharField(max_length=100)
+    country = models.CharField(max_length=100)
+    phone = models.CharField(max_length=10)
+    email = models.EmailField(max_length=100)
+    web_site = models.URLField()
+    prefix = models.CharField(max_length=5, unique=True, help_text="Unique prefix for invoice numbers")
+
+    def __str__(self):
+        return self.name
 
 
 
@@ -298,13 +315,8 @@ class Bank(models.Model):
 
 
 class Order(models.Model):
-    COMPANY_CHOICES = [
-        ('MICHEAL IMPORT EXPORT PVT LTD', 'MICHEAL IMPORT EXPORT PVT LTD'),
-        ('BEPOSITIVERACING PVT LTD', 'BEPOSITIVERACING PVT  LTD'),
-    ]
-
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
-    company = models.CharField(max_length=100, choices=COMPANY_CHOICES, default='MICHEAL IMPORT EXPORT PVT LTD')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
     billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE,related_name="billing_address")
@@ -319,10 +331,15 @@ class Order(models.Model):
         ('COD', 'COD'),
         ('credit', 'credit'),
     ], default='payed')
-    status = models.CharField(max_length=20, choices=[
+    status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),
         ('Shipped', 'Shipped'),
+        ('Invoice Created','Invoice Created'),
+        ('Invoice Approved','Invoice Approved'),
+        ('Waiting For Confirmation','Waiting For Confirmation'),
+        ('To Print','To Print'),
+        ('Invoice Rejectd','Invoice Rejectd'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
@@ -331,6 +348,7 @@ class Order(models.Model):
     ], default='Pending')
     total_amount = models.FloatField()
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="bank")
+    note = models.TextField(null=True)
     payment_method = models.CharField(max_length=50, choices=[
         ('Credit Card', 'Credit Card'),
         ('Debit Card', 'Debit Card'),
@@ -348,19 +366,15 @@ class Order(models.Model):
         super().save(*args, **kwargs)
 
     def generate_invoice_number(self):
-        prefix = ""
-        if self.company == 'MICHEAL IMPORT EXPORT PVT LTD':
-            prefix = "MI-"
-        elif self.company == 'BEPOSITIVERACING PVT LTD':
-            prefix = "BR-"
+        if not self.company:
+            raise ValueError("Company must be set to generate an invoice number.")
         
+        prefix = self.company.prefix  # Retrieve prefix from the associated Company
         number = self.get_next_invoice_number(prefix)
         invoice_number = f"{prefix}{number}"
-        print(f"Invoice number generated: {invoice_number}")
         return invoice_number
 
     def get_next_invoice_number(self, prefix):
-        # Get the highest existing invoice number for the given prefix
         highest_invoice = Order.objects.filter(invoice__startswith=prefix).order_by('invoice').last()
         if highest_invoice:
             number = int(highest_invoice.invoice.split('-')[-1]) + 1
@@ -405,6 +419,131 @@ class BeposoftCart(models.Model):
         return f"{self.product.name} - {self.quantity}"
     class Meta:
         db_table = "beposoft_cart"
+        
+        
+    
+    
+class PaymentReceipt(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payment_receipts')
+    customer = models.ForeignKey(Customers,on_delete=models.CASCADE,null=True)
+    payment_receipt = models.CharField(max_length=10, unique=True, editable=False)  # Combined ID
+    amount = models.CharField(max_length=100)
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
+    transactionID = models.CharField(max_length=50)
+    received_at = models.DateField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    remark = models.TextField()
+
+    def save(self, *args, **kwargs):
+        # Generate a unique payment_receipt if not set
+        if not self.payment_receipt:
+            # Get the last receipt ID and increment
+            last_id = PaymentReceipt.objects.all().order_by('id').last()
+            next_id = last_id.id + 1 if last_id else 1
+            # Create formatted ID, e.g., REC-0001A
+            self.payment_receipt = f"REC-{str(next_id).zfill(4)}{chr(65 + (next_id % 26))}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Receipt #{self.payment_receipt} for Order: {self.order.invoice}"
+
+    class Meta:
+        db_table = "receipts"
+        
+    
+
+class PerfomaInvoiceOrder(models.Model):
+    COMPANY_CHOICES = [
+        ('MICHEAL IMPORT EXPORT PVT LTD', 'MICHEAL IMPORT EXPORT PVT LTD'),
+        ('BEPOSITIVERACING PVT LTD', 'BEPOSITIVERACING PVT  LTD'),
+    ]
+
+    manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
+    company = models.CharField(max_length=100, choices=COMPANY_CHOICES, default='MICHEAL IMPORT EXPORT PVT LTD')
+    customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="perfoma_customer")
+    invoice = models.CharField(max_length=20, unique=True, blank=True)
+    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE,related_name="perfoma_billing_address")
+    order_date = models.CharField(max_length=100)
+    family = models.ForeignKey(Family, on_delete=models.CASCADE)
+    state = models.ForeignKey(State, on_delete=models.CASCADE)
+    code_charge = models.IntegerField(default=0,null=True)
+    shipping_mode = models.CharField(max_length=100,null=True)
+    shipping_charge = models.IntegerField(default=0,null=True)
+    payment_status = models.CharField(max_length=20, choices=[
+        ('payed', 'payed'),
+        ('COD', 'COD'),
+        ('credit', 'credit'),
+    ], default='payed')
+    status = models.CharField(max_length=100, choices=[
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Shipped', 'Shipped'),
+        ('Invoice Created','Invoice Created'),
+        ('Invoice Approved','Invoice Approved'),
+        ('Waiting For Confirmation','Waiting For Confirmation'),
+        ('To Print','To Print'),
+        ('Invoice Rejectd','Invoice Rejectd'),
+        ('Processing', 'Processing'),
+        ('Completed', 'Completed'),
+        ('Cancelled', 'Cancelled'),
+        ('Refunded', 'Refunded'),
+        ('Return', 'Return'),
+    ], default='Pending')
+    total_amount = models.FloatField()
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="perfoma_bank")
+    note = models.TextField(null=True)
+    payment_method = models.CharField(max_length=50, choices=[
+        ('Credit Card', 'Credit Card'),
+        ('Debit Card', 'Debit Card'),
+        ('PayPal', 'PayPal'),
+        ('Razorpay', 'Razorpay'),
+        ('Net Banking', 'Net Banking'),
+        ('Bank Transfer', 'Bank Transfer'),
+        ('Cash on Delivery', 'Cash on Delivery'),
+    ], default='Net Banking')
+
+    def save(self, *args, **kwargs):
+        if not self.invoice:
+            self.invoice = self.generate_invoice_number()
+            print(f"Generated invoice number: {self.invoice}")
+        super().save(*args, **kwargs)
+
+    def generate_invoice_number(self):
+        prefix = ""
+        if self.company == 'MICHEAL IMPORT EXPORT PVT LTD':
+            prefix = "MI-"
+        elif self.company == 'BEPOSITIVERACING PVT LTD':
+            prefix = "BR-"
+        
+        number = self.get_next_invoice_number(prefix)
+        invoice_number = f"{prefix}{number}"
+        print(f"Invoice number generated: {invoice_number}")
+        return invoice_number
+
+    def get_next_invoice_number(self, prefix):
+        # Get the highest existing invoice number for the given prefix
+        highest_invoice = PerfomaInvoiceOrder.objects.filter(invoice__startswith=prefix).order_by('invoice').last()
+        if highest_invoice:
+            number = int(highest_invoice.invoice.split('-')[-1]) + 1
+        else:
+            number = 1
+        return str(number).zfill(6)  # Zero-pad to 6 digits
+
+    def __str__(self):
+        return f"Order {self.invoice} by {self.customer}"
+    
 
 
+class PerfomaInvoiceOrderItem(models.Model):
+    order = models.ForeignKey(PerfomaInvoiceOrder, on_delete=models.CASCADE, related_name='perfoma_items')
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
+    size = models.ForeignKey(ProductAttributeVariant, on_delete=models.CASCADE,null=True)
+    description = models.CharField(max_length=100,null=True)
+    rate = models.IntegerField()  # without GST
+    tax = models.PositiveIntegerField()  # tax percentage
+    discount = models.IntegerField(default=0, null=True)
+    quantity = models.PositiveIntegerField()
 
+    def __str__(self):
+        return f"{self.product.name} (x{self.quantity})"
