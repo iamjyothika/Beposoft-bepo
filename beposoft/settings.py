@@ -66,7 +66,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'beposoft_app',
-    'bepocart'
+    'bepocart',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -167,39 +168,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  
 
 
-# AWS S3 Configuration
-AWS_ACCESS_KEY_ID = 'AKIAXEVXYTW3SX5RCZ4B'
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_STORAGE_BUCKET_NAME = 'beposoft-bkt'
-AWS_S3_REGION_NAME = 'ap-south-1'
-AWS_S3_SIGNATURE_VERSION = 's3v4'
-
-AWS_S3_FILE_OVERWRITE = False  
-AWS_DEFAULT_ACL = None        
-AWS_S3_VERIFY = True
-
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-
-
-if 'STATICFILES_STORAGE' in locals():
-    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-AWS_S3_SIGNATURE_VERSION = 's3v4'
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
-
-
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",  
-    },
-    "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",  
-    },
-}
 
 
 
