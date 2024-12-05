@@ -5,6 +5,7 @@ import re
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import random
+from datetime import datetime
 # Create your models here.
 
 
@@ -177,6 +178,17 @@ class Company(models.Model):
     web_site = models.URLField()
     prefix = models.CharField(max_length=5, unique=True, help_text="Unique prefix for invoice numbers")
 
+    def __str__(self):
+        return self.name
+    
+    
+class ParcalService(models.Model):
+    name = models.CharField(max_length=100)
+    label = models.CharField(max_length=100)
+    
+    class Meta :
+        db_table = 'parcal_service'
+        
     def __str__(self):
         return self.name
 
@@ -376,11 +388,18 @@ class Order(models.Model):
 
     def get_next_invoice_number(self, prefix):
         highest_invoice = Order.objects.filter(invoice__startswith=prefix).order_by('invoice').last()
+        
         if highest_invoice:
-            number = int(highest_invoice.invoice.split('-')[-1]) + 1
+            # Extract the numeric part of the invoice, assuming it's in the form FPN000001
+            last_number = highest_invoice.invoice[len(prefix):]  # Remove the prefix
+            try:
+                number = int(last_number) + 1 
+            except ValueError:
+                number = 1  
         else:
-            number = 1
-        return str(number).zfill(6)  # Zero-pad to 6 digits
+            number = 1  # If no previous invoice exists, start with 1
+        
+        return str(number).zfill(6)  # Zero-pad to 6 digits (FPN000001, FPN000002, etc.)
 
     def __str__(self):
         return f"Order {self.invoice} by {self.customer}"
@@ -547,3 +566,76 @@ class PerfomaInvoiceOrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} (x{self.quantity})"
+
+
+
+
+class Warehousedata(models.Model):
+    order=models.ForeignKey(Order,on_delete=models.CASCADE,related_name='warehouse')
+    box=models.CharField(max_length=100)
+    weight=models.CharField(max_length=30)
+    length=models.CharField(max_length=30)
+    breadth=models.CharField(max_length=30)
+    height=models.CharField(max_length=30,null=True)
+    image=models.ImageField(upload_to='images/',null=True,blank=True)
+    packed_by=models.ForeignKey(User,on_delete=models.CASCADE)
+    parcel_service=models.ForeignKey(ParcalService, on_delete=models.CASCADE,null=True, blank=True)  
+    tracking_id=models.CharField(max_length=100,null=True, blank=True)
+    shipping_charge=models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,null=True)
+    status=models.CharField(max_length=30,null=True, blank=True)
+    shipped_date=models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.box} - {self.parcel_service.name} ({self.shipped_date})"
+
+
+class GRVModel(models.Model):
+    STATUS_CHOICES=[
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    REMARK_CHOICES=[
+        ('return','Return'),
+        ('refund','Refund')
+    ]
+    order=models.ForeignKey(Order,on_delete=models.CASCADE)
+    product=models.CharField(max_length=100)
+    returnreason=models.CharField(max_length=200)
+    price=models.DecimalField(max_digits=10, decimal_places=2)
+    quantity=models.IntegerField()
+    remark=models.CharField(max_length=20,choices=REMARK_CHOICES,null=True)
+    status=models.CharField(max_length=30,choices=STATUS_CHOICES,default='pending',null=True)
+    date=models.DateField(null=True)
+    time=models.TimeField(null=True)
+    note=models.TextField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    def update_status(self, new_status):
+        """
+        Updates the status and sets the updated_at field to the current time.
+        """
+        if self.status != new_status:  # Check if the status is changing
+            self.status = new_status
+            self.updated_at = datetime.now()  # Set current timestamp
+            print(f"Status updated to '{new_status}' on {self.updated_at}")
+            self.save()  # Save the changes
+        else:
+            print("No change in status.")
+
+
+class ExpenseModel(models.Model):
+    company=models.ForeignKey(Company,on_delete=models.CASCADE)
+    payed_by=models.ForeignKey(User,on_delete=models.CASCADE)
+    bank=models.ForeignKey(Bank,on_delete=models.CASCADE)
+    purpose_of_payment=models.TextField()
+    amount=models.DecimalField(max_digits=10,decimal_places=2,null=True)
+    expense_date=models.DateField()
+    transaction_id=models.IntegerField()
+    description=models.TextField()
+    added_by=models.CharField(max_length=30,null=True)
+    
+    
+    
+    

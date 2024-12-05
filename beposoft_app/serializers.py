@@ -1,7 +1,12 @@
-from rest_framework import serializers
+from rest_framework import serializers 
 from .models import *
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
+from django.db.models import Sum
+from datetime import datetime
+from django.db.models import F, Sum, FloatField
+from django.db.models.functions import Cast
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
     retype_password = serializers.CharField(write_only=True, required=True)
@@ -151,6 +156,8 @@ class ProductsSerializer(serializers.ModelSerializer):
 
 
 class CustomerSerilizers(serializers.ModelSerializer):
+    state = serializers.CharField(source='state.name', read_only=True)
+    manager = serializers.CharField(source ='manager.name',read_only=True)
     class Meta :
         model = Customers
         fields = "__all__"
@@ -359,34 +366,12 @@ class PaymentRecieptsViewSerializers(serializers.ModelSerializer):
         model = PaymentReceipt
         fields = '__all__'
 
-
-class OrderModelSerilizer(serializers.ModelSerializer):
-    manage_staff = serializers.CharField(source="manage_staff.name")
-    family = serializers.CharField(source="family.name")
-    bank  = BankSerializer(read_only=True)
-    billing_address = ShippingAddressView(read_only=True)
-    customer = CustomerSerilizers(read_only=True)
-    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
-    customerID = serializers.IntegerField(source="customer.pk")
-
-    
-    class Meta:
-        model = Order
-        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID"]
-
-
-class LedgerSerializers(serializers.ModelSerializer):
-    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
-    class Meta :
-        model = Order
-        fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
-
-        
 class OrderItemModelSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
+    
     
     class Meta:
         model = OrderItem
@@ -439,6 +424,59 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
             image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
 
         return image_urls if image_urls else None
+
+class WarehousedataSerializer(serializers.ModelSerializer):
+    customer = serializers.CharField(source="order.customer.name")
+    invoice = serializers.CharField(source="order.invoice")
+    family = serializers.CharField(source="order.family.name")
+
+    class Meta:
+        model = Warehousedata
+        fields = [
+            'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
+            'parcel_service', 'tracking_id', 'shipping_charge', 'status',
+            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Handle None for parcel_service
+        data['parcel_service'] = (
+            instance.parcel_service.name if instance.parcel_service else None
+        )
+        return data
+        
+        
+class WarehouseUpdateSerializers(serializers.ModelSerializer):
+    class Meta :
+        model = Warehousedata
+        fields = ['parcel_service','tracking_id','shipping_charge']
+        
+        
+class OrderModelSerilizer(serializers.ModelSerializer):
+    manage_staff = serializers.CharField(source="manage_staff.name")
+    family = serializers.CharField(source="family.name")
+    bank  = BankSerializer(read_only=True)
+    billing_address = ShippingAddressView(read_only=True)
+    customer = CustomerSerilizers(read_only=True)
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    customerID = serializers.IntegerField(source="customer.pk")
+    items = OrderItemModelSerializer(read_only = True,  many=True)
+    warehouse=WarehousedataSerializer(many=True,read_only=True)
+
+    
+    class Meta:
+        model = Order
+        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID","warehouse","items"]
+
+
+class LedgerSerializers(serializers.ModelSerializer):
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    class Meta :
+        model = Order
+        fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
+
+        
 
 
 
@@ -637,5 +675,212 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
 
         
 
-
+class CompanyDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = "__all__"
         
+
+
+class WarehouseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Warehousedata
+        fields=['box','parcel_service','tracking_id']
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.name', read_only=True)  
+    staff_name = serializers.CharField(source='manage_staff.name', read_only=True) 
+    family_name=serializers.CharField(source='family.name',read_only=True)
+    warehouse_orders=WarehouseSerializer(many=True,read_only=True)
+
+    
+    class Meta:
+        model = Order
+        fields = ['invoice', 'customer_name', 'staff_name', 'total_amount', 'order_date','family_name','warehouse_orders']
+
+class PaymentReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentReceipt
+        fields = ['amount']       
+
+
+class OrderPaymentSerializer(serializers.ModelSerializer):
+    payment_receipts = PaymentReceiptSerializer(many=True)
+    
+    # We will calculate the total paid amount by summing the amount from all related payment receipts
+    total_paid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = ['id', 'invoice', 'order_date', 'payment_status', 'status', 'payment_receipts', 'manage_staff', 'customer', 'total_paid']
+
+    def get_total_paid(self, obj):
+        # Calculate the total paid amount from all related payment receipts for this order
+        total_paid = obj.payment_receipts.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
+        return total_paid
+
+          
+
+
+
+
+
+
+
+
+
+class WarehouseBoxesDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Warehousedata
+        fields = "__all__"
+            
+       
+
+# class OrderModelSerilizer(serializers.ModelSerializer):
+    # manage_staff = serializers.CharField(source="manage_staff.name")
+    # family = serializers.CharField(source="family.name")
+    # bank  = BankSerializer(read_only=True)
+    # billing_address = ShippingAddressView(read_only=True)
+    # customer = CustomerSerilizers(read_only=True)
+    # payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    # customerID = serializers.IntegerField(source="customer.pk")
+    # warehouse_orders=WarehousedataSerializer(many=True,read_only=True)
+
+
+    # class Meta:
+    #     model = Order
+    #     fields = ["id","manage_staff","updated_at","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID","warehouse_orders"]
+
+class GRVSerializer(serializers.ModelSerializer):
+    customer = serializers.CharField(source="order.customer.name")
+    staff=serializers.CharField(source='order.manage_staff.name')
+    invoice = serializers.CharField(source = "order.invoice")
+    order_date = serializers.CharField(source="order.order_date")
+    class Meta:
+        model=GRVModel
+        fields=['order','id','product','returnreason','price','quantity','remark','note','status','customer','invoice','staff',"order_date",'date','time','updated_at']
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if 'time' in representation and representation['time']:
+            try:
+                # Convert stored time into 12-hour format for the response
+                time_obj = datetime.strptime(representation['time'], '%H:%M:%S')  # Assuming HH:MM:SS storage format
+                representation['time'] = time_obj.strftime('%I:%M %p')  # Convert to hh:mm AM/PM
+            except ValueError:
+                pass  # Leave the time as-is if parsing fails
+        return representation  
+        # Customize the output format of the time field
+           
+
+class GRVModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GRVModel
+        fields = ['order', 'product', 'returnreason', 'price', 'quantity', 'remark', 'status', 'date', 'time', 'note', 'updated_at']
+
+
+
+class StateBaseOrderSerializers(serializers.ModelSerializer):
+        
+    total_invoiced_orders = serializers.SerializerMethodField()
+    total_invoiced_orders_amount = serializers.SerializerMethodField()
+
+    total_delivered_orders = serializers.SerializerMethodField()
+    total_delivered_orders_amount = serializers.SerializerMethodField()
+    
+    total_cancelled_orders = serializers.SerializerMethodField()
+    total_cancelled_orders_amount = serializers.SerializerMethodField()
+    
+    total_returned_orders = serializers.SerializerMethodField()
+    total_returned_orders_amount = serializers.SerializerMethodField()
+    
+    total_rejected_orders = serializers.SerializerMethodField()
+    total_rejected_orders_amount = serializers.SerializerMethodField()
+
+    status_based_orders = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = State
+        fields = "_all_" 
+    def get_total_invoiced_orders(self, obj):
+        return Order.objects.filter(state=obj, status="Invoice Rejectd").count()
+
+    def get_total_invoiced_orders_amount(self, obj):
+        return Order.objects.filter(state=obj, status="Invoice Rejectd").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
+    
+
+    def get_total_delivered_orders(self, obj):
+        return Order.objects.filter(state=obj, status="Completed").count()
+
+    def get_total_delivered_orders_amount(self, obj):
+        return Order.objects.filter(state=obj, status="Completed").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
+
+    def get_total_cancelled_orders(self, obj):
+        return Order.objects.filter(state=obj, status="Cancelled").count()
+
+    def get_total_cancelled_orders_amount(self, obj):
+        return Order.objects.filter(state=obj, status="Cancelled").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
+
+    def get_total_returned_orders(self, obj):
+        return Order.objects.filter(state=obj, status="Return").count()
+
+    def get_total_returned_orders_amount(self, obj):
+        return Order.objects.filter(state=obj, status="Return").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
+
+    def get_total_rejected_orders(self, obj):
+        return Order.objects.filter(state=obj, status="Invoice Rejectd").count()
+
+    def get_total_rejected_orders_amount(self, obj):
+        return Order.objects.filter(state=obj, status="Invoice Rejectd").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
+    
+    def get_status_based_orders(self, obj):
+        statuses = ["Completed", "Cancelled", "Return", "Invoice Rejected"]
+
+        data = {}
+        for i in statuses:
+            orders = Order.objects.filter(state=obj, status=i).values(
+                "id", "order_date", "total_amount","invoice","status",
+            )
+            total_amount = orders.aggregate(total=models.Sum("total_amount"))["total"] or 0
+            data[i] = {
+                "orders": list(orders),
+                "total_orders": orders.count(),
+                "total_amount": total_amount
+            }
+        return data
+    
+
+class WareHouseSerializer(serializers.ModelSerializer):
+    invoice=serializers.CharField(source="order.invoice")
+    customer=serializers.CharField(source="order.customer.name")
+    order_date=serializers.DateTimeField(source="order.order_date")
+    volume_weight = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Warehousedata
+        fields=['invoice','customer','order_date','weight','volume_weight']
+
+    def get_volume_weight(self, obj):
+        try:
+            # Ensure length, breadth, and height are converted to float and not None
+            length = float(obj.length) if obj.length else 0
+            breadth = float(obj.breadth) if obj.breadth else 0
+            height = float(obj.height) if obj.height else 0
+            return round((length * breadth * height) / 6000, 2)
+        except Exception:
+            return None
+        
+
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseModel
+        fields = "_all_"
+        
+        
+        
+class ParcalSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = ParcalService
+        fields = "__all__"

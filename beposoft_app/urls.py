@@ -100,16 +100,57 @@ urlpatterns = [
     path('api/banks/',BankView.as_view()),
     path('api/bank/view/<int:pk>/',BankAccountView.as_view()),
     
+    path('api/company/data/',CreateCompnayDetailsView.as_view()),
+    
+    
     
     path('api/payment/<int:pk>/reciept/',CreateReceiptAgainstInvoice.as_view()),
     path('api/customer/<int:pk>/ledger/',CustomerOrderLedgerdata.as_view()),
     
     
-    
-    
     path('api/perfoma/invoice/create/',CreatePerfomaInvoice.as_view()),
     path('api/perfoma/invoices/',PerfomaInvoiceListView.as_view()),
-    path('api/perfoma/<str:invoice>/invoice/',PerfomaInvoiceDetailView.as_view())
+    path('api/perfoma/<str:invoice>/invoice/',PerfomaInvoiceDetailView.as_view()),
+    
+    
+    
+    path('api/warehouse/data/',WarehouseDataView.as_view()),
+    path('api/warehouse/detail/<int:pk>/',WarehouseDetailView.as_view()),
+    path('api/warehouse/box/detail/',DailyGoodsView.as_view()),
+    path('api/warehousedata/<str:date>/',DailyGoodsBydate.as_view()),
+    
+    
+    path('api/grv/data/',GRVaddView.as_view()),
+    path('api/getgrv/<int:pk>',GRVGetViewById.as_view()),
+    path('api/grv/update/<int:pk>/',GRVUpdateView.as_view()),
+    
+
+    path('api/expense/add/',ExpensAddView.as_view()),
+    path('api/expense/get/',ExpenseGetView.as_view()),
+    path('api/expense/get/<int:pk>/',ExpenseUpdate.as_view()),
+
+
+    path('api/salesreport/',SalesReportView.as_view()),
+    path('api/invoicereport/<str:date>/',InvoiceReportView.as_view()),
+
+    path('api/bills/<str:date>/<int:pk>/',BillsView.as_view()),
+    path('api/credit/sales/',CreditSalesReportView.as_view()),
+    path('api/credit/bills/<str:date>/',CreditBillsView.as_view()),
+    path('api/COD/sales/',CODSalesReportView.as_view()),
+    path('api/COD/bills/<str:date>/',CODBillsView.as_view()),
+
+    path('api/statewise/report/',StatewiseSalesReport.as_view()),
+    path('api/stateorder/detail/<int:state_id>/',StateOrderDetailsView.as_view()),
+
+    path('api/deliverylist/report/<str:date>/',DeliveryListView.as_view()),
+    path('api/sold/products/',ProductSaleReportView.as_view()),
+    
+    
+    
+    path('api/parcal/service/',ParcalServiceView.as_view()),
+    path('api/parcal/<int:pk>/service/',EditParcalService.as_view())
+    
+    
     
     
     

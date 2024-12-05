@@ -16,7 +16,10 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DatabaseError
 from decimal import Decimal
-
+from django.db.models import Sum
+from django.http import JsonResponse
+from django.utils.dateparse import parse_date
+from django.db.models import Count, Q
 
 
 class UserRegistrationAPIView(APIView):
@@ -162,18 +165,21 @@ class CreateUserView(BaseTokenView):
             if error_response:
                 return error_response
             
-            allocated_states = request.data.getlist('allocated_states', [])
+            
+            
+            allocated_states = request.data.get('allocated_states', [])
+
             print(f"Allocated States Received: {allocated_states}") 
             
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                print("Response data    :",serializer.data)
                 return Response({"data": serializer.data, "message": "User created successfully"}, status=status.HTTP_201_CREATED)
             print(serializer.errors)
             return Response({"status": "error", "message": "Validation failed","errors": serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            print(e)
             return Response({ "status": "error", "message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -257,8 +263,19 @@ class UserCustomerAddingView(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            
+            
+            data = request.data
+            if isinstance(data, dict):
+                data = [data]
+            
+            if not isinstance(data, list):
+                return Response(
+                    {"status": "error", "message": "Invalid data format. Must be a dictionary or list of dictionaries."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            serializer = CustomerModelSerializer(data=request.data)
+            serializer = CustomerModelSerializer(data=data, many=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data, "message": "Customer added successfully"}, status=status.HTTP_201_CREATED)
@@ -682,8 +699,18 @@ class StateCreateView(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            
+            data = request.data
+            if isinstance(data, dict):
+                data = [data]
+            
+            if not isinstance(data, list):
+                return Response(
+                    {"status": "error", "message": "Invalid data format. Must be a dictionary or list of dictionaries."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            serializer = StateSerializers(data=request.data)
+            serializer = StateSerializers(data=data , many=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"message": "State added successftully", "data": serializer.data}, status=status.HTTP_201_CREATED)
@@ -1206,6 +1233,7 @@ class CreateOrder(BaseTokenView):
             cart_items = BeposoftCart.objects.filter(user=authUser)
             serializer = OrderSerializer(data=request.data)
             if not serializer.is_valid():
+                print(serializer.errors)
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
             order = serializer.save()  # Create order
@@ -1256,7 +1284,7 @@ class CreateOrder(BaseTokenView):
             return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         except Exception as e:
-            logger.error("Unexpected error in CreateOrder view: %s", str(e))
+            print("Unexpected error in CreateOrder view: %s", str(e))
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OrderListView(BaseTokenView):
@@ -1639,22 +1667,41 @@ class StaffcartStoredProductsView(BaseTokenView):
     
         
 class CreateBankAccountView(BaseTokenView):
-    def post(self,request):
-        try :
+    def post(self, request):
+        try:
+            # Authenticate the user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
 
-            serializer = BankSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(created_user =authUser)
-                return Response({"status": "success", "message": "Bank created successfully."}, status=status.HTTP_201_CREATED)
-            return Response({"status" : "error","message":serializer.errors}, status=status.HTTP_200_OK)
+            data = request.data
+            if isinstance(data, dict):
+                data = [data]
+            
+            if not isinstance(data, list):
+                return Response(
+                    {"status": "error", "message": "Invalid data format. Must be a dictionary or list of dictionaries."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        except Exception as e :
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        
+            serializer = BankSerializer(data=data, many=True)
+            if serializer.is_valid():
+                serializer.save(created_user=authUser)
+                return Response(
+                    {"status": "success", "message": "Bank account(s) created successfully."},
+                    status=status.HTTP_201_CREATED,
+                )
+            
+            return Response(
+                {"status": "error", "message": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": "An error occurred", "errors": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         
 class BankView(BaseTokenView):
     def get(self,request):
@@ -1985,5 +2032,854 @@ class PerfomaInvoiceDetailView(BaseTokenView):
         
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+class CreateCompnayDetailsView(BaseTokenView):
+    def post(self, request):
+        try:
+            # Authenticate the user
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            # Check if the incoming data is single or multiple
+            data = request.data
+            if isinstance(data, dict):
+                # Single record: Wrap it in a list to reuse the bulk handling logic
+                data = [data]
+            
+            if not isinstance(data, list):
+                return Response(
+                    {"status": "error", "message": "Invalid data format. Must be a dictionary or list of dictionaries."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            # Pass user to the serializer context
+            serializer = CompanyDetailsSerializer(data=data, many=True, context={'user': authUser})
+            if serializer.is_valid():
+                serializer.save()  # Handles both single and multiple
+                return Response(
+                    {"status": "success", "message": "Company details created successfully"},
+                    status=status.HTTP_201_CREATED,
+                )
+            
+            # Return validation errors
+            return Response(
+                {"status": "error", "message": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+            
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            company = Company.objects.all()
+            serializer = CompanyDetailsSerializer(company, many=True)
+            return Response(
+                    {"data": serializer.data},
+                    status=status.HTTP_200_OK,
+                )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         
+
+
+class WarehouseDataView(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            if isinstance(request.data, list):
+                serializer = WarehouseBoxesDataSerializer(data=request.data, many=True)
+            else:
+                serializer = WarehouseBoxesDataSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status":"success","data":serializer.data}, status=status.HTTP_201_CREATED)
+            else:
+                print(f"Serializer errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        
+class WarehouseDetailView(BaseTokenView):
+    def put(self,request,pk):
+        try:
+            authUser,error_response=self.get_user_from_token(request)  
+            if error_response:
+                return error_response
+            print(request.data)
+            warehousedata = get_object_or_404(Warehousedata,pk=pk)
+            serializer = WarehouseUpdateSerializers(warehousedata, data=request.data,partial =True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            print(serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+    def delete(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            warehousedata = get_object_or_404(Warehousedata, pk=pk)
+            warehousedata.delete()
+            return Response({"status": "success", "message": "Warehouse data deleted"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            
+       
+class DailyGoodsView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            warehouse=Warehousedata.objects.all()
+            
+            seen_dates = set()
+            response_data=[]
+        
+            for box_detail in warehouse:
+                print(f"Weight: {box_detail.weight}, Length: {box_detail.length}, Breadth: {box_detail.breadth}, Height: {box_detail.height}")
+                if box_detail.shipped_date not in seen_dates:
+                    boxes_for_date = warehouse.filter(shipped_date=box_detail.shipped_date)
+                    total_weight = 0
+                    for box in boxes_for_date:
+                        try:
+                            total_weight += float(box.weight)
+
+
+                        except (ValueError, TypeError):
+                            continue 
+
+                    # Calculate total volume weight
+                    total_volume_weight = 0
+                    for box in boxes_for_date:
+                        try:
+                            length = float(box.length)
+                            breadth = float(box.breadth)
+                            height = float(box.height)
+                            total_volume_weight += (length * breadth * height) / 6000
+                        except (ValueError, TypeError):
+                            continue 
+                    total_shipping_charge =0  
+                    for box in boxes_for_date:
+                        try:
+                            total_shipping_charge += float(box.shipping_charge)
+                        except (ValueError, TypeError):
+                            continue
+                    total_boxes = boxes_for_date.count()    
+
+                    # Serialize the boxes for the date
+                    serializer = WarehousedataSerializer(boxes_for_date, many=True)
+                
+
+                    # Add the data for the current shipped_date
+                    response_data.append({
+                        "shipped_date": box_detail.shipped_date,
+                        "total_boxes":total_boxes,
+
+                        "total_weight": round(total_weight, 2),
+                        "total_volume_weight": round(total_volume_weight, 2),
+                        "total_shipping_charge":round(total_shipping_charge,2)          #shipping_charge=delivery_charge
+                        # "boxes": serializer.data
+                    })
+
+                    seen_dates.add(box_detail.shipped_date)
+
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DailyGoodsBydate(BaseTokenView):
+    def get(self,request,date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+      
+            warehouse_data = Warehousedata.objects.filter(shipped_date=date)
+            if not warehouse_data.exists():
+                return Response({"Order Not Found"})
+            serializer = WarehousedataSerializer(warehouse_data, many=True)
+            return Response(serializer.data,status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class ExpensAddView(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense=ExpenseSerializer(data=request.data)
+            if expense.is_valid():
+                expense.save()
+                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data}, status=status.HTTP_200_OK)
+            return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ExpenseGetView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense_data = ExpenseModel.objects.all()
+            serializer = ExpenseSerializer(expense_data, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ExpenseUpdate(BaseTokenView):
+    def put(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense=get_object_or_404(ExpenseModel,pk=pk)
+            serializer = ExpenseSerializer(expense, data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Expense Updated Successfully"}, status=status.HTTP_200_OK)
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            
+        
+
+
+class GRVaddView(BaseTokenView):
+    def post(self, request):
+        try:
+            # Authenticate the user using the token
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Ensure the request data is a list of dictionaries
+            data = request.data if isinstance(request.data, list) else [request.data]
+
+            # Use the serializer with `many=True` for lists
+            grvdata = GRVModelSerializer(data=data, many=True)
+
+            # Validate and save the data
+            if grvdata.is_valid():
+                grvdata.save()
+                return Response({
+                    "status": "success",
+                    "message": "Added successfully",
+                    "data": grvdata.data
+                }, status=status.HTTP_200_OK)
+
+            logger.error(f"Validation failed: {grvdata.errors}")
+            return Response({
+                "status": "error",
+                "message": "Validation failed",
+                "errors": grvdata.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error occurred in GRVaddView: {str(e)}")
+            return Response({
+                "status": "error",
+                "message": "An error occurred while processing the request",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def get(self,request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+           
+            grvdata = GRVModel.objects.all()
+
+            if not grvdata.exists():
+                return Response(
+                    {"status": "error", "message": "No GRV records found for this staff."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Serialize the GRV data
+            serializer = GRVSerializer(grvdata, many=True)
+            return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+
+class GRVGetViewById(BaseTokenView):
+    def get(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            grvs=GRVModel.objects.get(pk=pk)
+            serializer = GRVModelSerializer(grvs)
+            return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+
+class GRVUpdateView(BaseTokenView):
+    
+    def put(self, request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            grv = get_object_or_404(GRVModel, pk=pk)
+            grvdata = GRVModelSerializer(grv, data=request.data,partial=True)
+            if grvdata.is_valid():
+                grvdata.save()
+                
+                return Response({"status": "success", "message": "GRV updated successfully"}, status=status.HTTP_200_OK)
+            return Response(grvdata.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    
+            
+        
+                
+
+            
+
+
+
+
+class SalesReportView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+       
+            orders=Order.objects.all()
+            approved_statuses = [
+                'Approved', 
+                'Shipped', 
+                'Invoice Created', 
+                'Invoice Approved', 
+                'Waiting For Confirmation',
+                'Invoice Rejectd' 
+                'To Print', 
+                'Processing', 
+                'Completed'
+            ]
+            distinct_dates = orders.values_list('order_date', flat=True).distinct()
+            report_data = []
+            total_bills=Order.objects.count()
+            print(f"The number of total bills:{total_bills}")
+            total_amount = orders.aggregate(total=Sum('total_amount'))['total'] or 0
+            print(f"Total amount:{total_amount}")
+
+
+      
+            for date in distinct_dates:
+                print(f"The date:{date}")
+                daily_orders = orders.filter(order_date=date)
+                print(f"Total orders for {date}: {daily_orders.count()}")
+                amount=daily_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+                bills_in_date=daily_orders.count()
+               
+                approved_bills = daily_orders.filter(status__in=approved_statuses)
+                approved_count = approved_bills.count()
+                approved_amount = approved_bills.aggregate(total=Sum('total_amount'))['total'] or 0
+                print(f"Approved bills for {date}: {approved_count}, Total approved amount: {approved_amount}")
+
+                
+                # Rejected bills and amount for the date
+                rejected_bills = daily_orders.exclude(status__in=approved_statuses)
+                rejected_count = rejected_bills.count()
+                rejected_amount = rejected_bills.aggregate(total=Sum('total_amount'))['total'] or 0
+                print(f"Rejected bills for {date}: {rejected_count}, Total rejected amount: {rejected_amount}")
+
+                # Append the results for the date
+                report_data.append({
+                    "date": date,
+                    "total_bills_in_date":bills_in_date,
+                 
+                    "amount": amount,
+                    "approved": {
+                        "bills": approved_count,
+                        "amount": approved_amount,
+                        "state":""
+                    },
+                    "rejected": {
+                        "bills": rejected_count,
+                        "amount": rejected_amount,
+                    },
+                })
+
+              
+               
+                
+            return Response({"Sales report":report_data},status=status.HTTP_200_OK)    
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class InvoiceReportView(BaseTokenView):
+    def get(self, request, date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            # Parse and validate the date
+            date = parse_date(date)
+            if not date:
+                return Response(
+                    {"status": "error", "message": "Invalid date format. Use YYYY-MM-DD."},
+                    status=400
+                )
+
+            approved_statuses = [
+                'Approved', 
+                'Shipped', 
+                'Invoice Created', 
+                'Invoice Approved', 
+                'Waiting For Confirmation',
+                'Invoice Rejectd', 
+                'To Print', 
+                'Processing', 
+                'Completed'
+            ]
+
+            # Query the orders by date and group by staff
+            orders = (
+                Order.objects.filter(order_date=date)
+                .select_related('state')
+                .select_related('manage_staff')
+                .select_for_update('family')
+                .values("manage_staff_username", "statename","family_name","manage_staff_id")  # Group by staff name
+                .annotate(
+                    total_bills=Count("id"),  # Total bills
+                    approved_bills=Count("id", filter=Q(status__in=approved_statuses)),  # Approved bills
+                    rejected_bills=Count("id", filter=~Q(status__in=approved_statuses)),  # Rejected bills
+                    total_amount_=Sum("total_amount", filter=Q(order_date=date)),
+                    approved_amount=Sum("total_amount", filter=Q(status__in=approved_statuses)),  # Amount for approved bills
+                    rejected_amount=Sum("total_amount", filter=~Q(status__in=approved_statuses)),  # Amount for rejected bills
+                )
+            )
+
+            # If no orders are found, return an error response early
+            if not orders:
+                return Response(
+                    {"status": "error", "message": "No orders found for the specified date."},
+                    status=404
+                )
+
+            # Format the response
+            response_data = [
+                {
+                    "staff_name": order["manage_staff__username"],
+               
+                    "total_bills": order.get("total_bills", 0),
+
+                    "total_amount_": order.get("total_amount_", 0),
+
+                 
+                    "approved_bills": order.get("approved_bills", 0),
+                    "rejected_bills": order.get("rejected_bills", 0),
+                  # Default to 0 if None
+                    "approved_amount": order.get("approved_amount", 0) or 0,  # Default to 0 if None
+                    "rejected_amount": order.get("rejected_amount", 0) or 0,  # Default to 0 if None
+                    "state_name": order.get("state__name", "Unknown") ,
+                    "family":order.get("family__name","Unknown"),
+                    "manage_staff":order.get("manage_staff_id","Unknown")
+
+                }
+                for order in orders
+            ]
+
+            return Response({"status": "success", "data": response_data}, status=200)
+
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=500
+            )
+        
+class BillsView(BaseTokenView):
+    def get(self,request,pk,date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            order_list=Order.objects.filter(order_date = date, manage_staff = pk)
+            serializer = OrderSerializer(order_list, many=True)
+            for i in order_list :
+                print(f"Order ID   {i.invoice}   staff   {i.manage_staff.name}")
+            return Response({"data":serializer.data})
+          
+
+        except Exception as e :
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class CreditSalesReportView(BaseTokenView):
+    def get(self, request):
+        try:
+                   
+            
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            # Fetch all orders with 'credit' payment status
+            orders = Order.objects.filter(payment_status="credit")
+            
+            # Count the total number of orders
+            bills = orders.count()
+
+            # Initialize a dictionary to store total amount per unique order date
+            total_by_date = {}
+
+            # Loop through the orders to accumulate total amounts by order date
+            for order in orders:
+                order_date = order.order_date
+                
+                # If the order date is not already in the dictionary, initialize it
+                if order_date not in total_by_date:
+                    total_by_date[order_date] = {
+                        'total_amount': 0, 
+                        'total_orders': 0, 
+                        'total_paid': 0, 
+                        'total_pending': 0
+                    }
+
+                # Accumulate the total amount and total orders
+                total_by_date[order_date]['total_amount'] += order.total_amount
+                total_by_date[order_date]['total_orders'] += 1
+
+                # Get the paid amount from PaymentReceipt (sum of the amount field)
+                paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(total_paid=Sum('amount'))['total_paid']
+                
+                # If no payment receipts, set the paid amount to 0
+                paid_amount = paid_amount if paid_amount is not None else 0
+                
+                # Accumulate the paid amount
+                total_by_date[order_date]['total_paid'] += paid_amount
+
+                # Calculate pending amount (total_amount - total_paid)
+                pending_amount = order.total_amount - paid_amount
+                total_by_date[order_date]['total_pending'] += pending_amount
+
+            # Prepare the response data
+            response_data = [
+                {
+                "date": date,
+                    "total_amount": data['total_amount'],
+                    "total_orders": data['total_orders'],
+                    "total_paid": data['total_paid'],
+                    "total_pending": data['total_pending']
+                }
+                for date, data in total_by_date.items()
+
+                
+            ]
+
+            # Return the response with the order summary
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(e)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreditBillsView(BaseTokenView):
+    def get(self,request,date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            order_list=Order.objects.filter(order_date =date,payment_status="credit")
+            serializer = OrderPaymentSerializer(order_list, many=True)
+            for i in order_list :
+                print(f"Order ID   {i.invoice}   staff   {i.manage_staff.name}")
+            return Response({"data":serializer.data})
+          
+
+        except Exception as e :
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class CODSalesReportView(BaseTokenView):
+    
+    def get(self, request):
+        try:
+                   
+            
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            # Fetch all orders with 'credit' payment status
+            orders = Order.objects.filter(payment_status="COD")
+            
+            # Count the total number of orders
+            bills = orders.count()
+
+            # Initialize a dictionary to store total amount per unique order date
+            total_by_date = {}
+
+            # Loop through the orders to accumulate total amounts by order date
+            for order in orders:
+                order_date = order.order_date
+                
+                # If the order date is not already in the dictionary, initialize it
+                if order_date not in total_by_date:
+                    total_by_date[order_date] = {
+                        'total_amount': 0, 
+                        'total_orders': 0, 
+                        'total_paid': 0, 
+                        'total_pending': 0
+                    }
+
+                # Accumulate the total amount and total orders
+                total_by_date[order_date]['total_amount'] += order.total_amount
+                total_by_date[order_date]['total_orders'] += 1
+
+                # Get the paid amount from PaymentReceipt (sum of the amount field)
+                paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(total_paid=Sum('amount'))['total_paid']
+                
+                # If no payment receipts, set the paid amount to 0
+                paid_amount = paid_amount if paid_amount is not None else 0
+                
+                # Accumulate the paid amount
+                total_by_date[order_date]['total_paid'] += paid_amount
+
+                # Calculate pending amount (total_amount - total_paid)
+                pending_amount = order.total_amount - paid_amount
+                total_by_date[order_date]['total_pending'] += pending_amount
+
+            # Prepare the response data
+            response_data = [
+                {
+                "date": date,
+                    "total_amount": data['total_amount'],
+                    "total_orders": data['total_orders'],
+                    "total_paid": data['total_paid'],
+                    "total_pending": data['total_pending']
+                }
+                for date, data in total_by_date.items()
+
+                
+            ]
+
+            # Return the response with the order summary
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(e)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+class CODBillsView(BaseTokenView):
+    def get(self,request,date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            order_list=Order.objects.filter(order_date =date,payment_status="COD")
+            serializer = OrderPaymentSerializer(order_list, many=True)
+            for i in order_list :
+                print(f"Order ID   {i.invoice}   staff   {i.manage_staff.name}")
+            return Response({"data":serializer.data})
+          
+
+        except Exception as e :
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+
+
+        
+            
+    
+
+class ProductSaleReportView(BaseTokenView):
+    def get(self, request):
+        try:
+            # Get user from token
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Get all sold out products (OrderItem)
+            soldouts = OrderItem.objects.filter(order__status='Shipped') 
+
+            product_sales = soldouts.values('order__order_date', 'product') \
+                                    .annotate(total_sold=Sum('quantity'))  # Sum of sold quantities
+            
+            response_data = []
+            for sale in product_sales:
+                product = Products.objects.get(id=sale['product'])  # Get the product from the ID
+                stock_quantity = product.stock # Stock quantity from the product
+
+          
+                remaining_stock = stock_quantity - sale['total_sold']
+
+                # Get the product title (or variant if necessary)
+                if product.type == 'single':
+                    product_title = product.name 
+                    print(product.name) # Use the product name directly for single products
+                else:
+                    # For variant products, retrieve the variant name
+                    variant_product = VariantProducts.objects.filter(product=product).first()
+                    if variant_product:
+                        product_title = variant_product.name  # Use the variant name if available
+                    else:
+                        product_title = product.name
+
+                # Prepare data for the response
+                response_data.append({
+                    "date": sale['order__order_date'],
+                    "product_title": product_title,
+                    "stock_quantity": stock_quantity,
+                    "items_sold": sale['total_sold'],
+                    "remaining_stock": remaining_stock
+                })
+
+            return Response({"status": "success", "data": response_data}, status=200)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse(
+                {"status": "error", "message": str(e)},
+                status=500
+            )
+        
+
+
+
+class StatewiseSalesReport(APIView):
+    def get(self, request):
+        try:
+            state = State.objects.all()
+            serializer = StateBaseOrderSerializers(state, many=True)
+
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+
+
+
+class StateOrderDetailsView(BaseTokenView):
+    def get(self, request, state_id):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+           
+            state = State.objects.get(pk=state_id)
+            
+            orders = Order.objects.filter(state=state)
+
+            serializer = OrderDetailSerializer(orders, many=True)
+
+           
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+
+        except State.DoesNotExist:
+            return Response({"status": "error", "message": "State not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class DeliveryListView(BaseTokenView):
+    def get(self, request,date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            data=Warehousedata.objects.filter(shipped_date=date)
+            serializer=WareHouseSerializer(data)
+            return Response({"data":serializer.data},status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+        
+
+
+class ParcalServiceView(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            serializer = ParcalSerializers(data = request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Parcal saved successfully"}, status=status.HTTP_200_OK)
+            return Response({"status":"error","message":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e :
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def get(self, request):
+        try:
+            parcal = ParcalService.objects.all()
+            serializer = ParcalSerializers(parcal, many=True)
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+class EditParcalService(APIView):
+    def put(self, request, pk):
+        try:
+            parcal = ParcalService.objects.get(pk=pk)
+            serializer = ParcalSerializers(parcal, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Parcal updated successfully"}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e :
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
