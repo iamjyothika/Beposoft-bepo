@@ -102,30 +102,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'beposoft.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
-# DATABASES = {  
-#     'default': {  
-#         'ENGINE': 'django.db.backends.postgresql',  
-#         'NAME': 'beposoft_db',  
-#         'USER': 'postgres',  
-#         'PASSWORD': 'bepoindia',  
-#         'HOST': 'database-1.cje486w6gaav.ap-south-1.rds.amazonaws.com',  
-#         'PORT': '5432', 
-#     }  
-# } 
-
-DATABASES = {  
-    'default': {  
-        'ENGINE': 'django.db.backends.mysql',  
-        'NAME': 'beposoft_db',  
-        'USER': 'beposoft',  
-        'PASSWORD': 'bepoindia',  
-        'HOST': 'database-2.cje486w6gaav.ap-south-1.rds.amazonaws.com',  
-        'PORT': '3306', 
-    }  
-}  
 
 
 
