@@ -79,7 +79,7 @@ class StaffSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id','eid','name','department','join_date','phone','email','designation','family']
+        fields = ['id','eid','name','department','join_date','phone','email','designation','family','approval_status']
 
 
 class CustomerModelSerializer(serializers.ModelSerializer):
