@@ -354,6 +354,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = "__all__"
         
 class BankSerializer(serializers.ModelSerializer):
+    created_user = serializers.CharField(source="created_user.name")
     class Meta:
         model = Bank
         fields = "__all__"

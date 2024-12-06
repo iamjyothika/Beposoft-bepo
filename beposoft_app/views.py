@@ -165,13 +165,10 @@ class CreateUserView(BaseTokenView):
             if error_response:
                 return error_response
             
-            
-            
+        
             allocated_states = request.data.get('allocated_states', [])
 
-         
-            
-            serializer = UserSerializer(data=request.data)
+            serializer = UserSerializer(data=request.data, many=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data, "message": "User created successfully"}, status=status.HTTP_201_CREATED)
@@ -440,7 +437,7 @@ class ProductCreateView(BaseTokenView):
             if error_response:
                 return error_response
 
-            family_ids = request.data.getlist('family[]')  # Use the same key as in FormData
+            family_ids = request.data.get('family')  
 
             if not family_ids:
                 return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
@@ -455,7 +452,7 @@ class ProductCreateView(BaseTokenView):
             if serializer.is_valid():
                 product = serializer.save()
 
-                product.family.set(families)  # Assuming `family` is a ManyToMany field in your Product model
+                product.family.set(families)  
                 
                 return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -948,7 +945,6 @@ class CustomerShippingAddressUpdate(BaseTokenView):
         
 
 
-import json
 
 import json
 import itertools
@@ -1013,6 +1009,7 @@ class VariantProductCreate(BaseTokenView):
             return Response({"message": "Product added successfully"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            logger.error(f"An error occurred: {str(e)}", exc_info=True)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
