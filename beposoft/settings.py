@@ -48,7 +48,7 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
 ]
 
-
+APPEND_SLASH = False
 
 SECURE_COOKIE = True
 
@@ -102,6 +102,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'beposoft.wsgi.application'
 
 
+
+DATABASES = {  
+    'default': {  
+        'ENGINE': 'django.db.backends.mysql',  
+        'NAME': 'beposoft_db',  
+        'USER': 'beposoft',  
+        'PASSWORD': 'bepoindia',  
+        'HOST': 'database-2.cje486w6gaav.ap-south-1.rds.amazonaws.com',  
+        'PORT': '3306', 
+    }  
+}  
 
 
 
