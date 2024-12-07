@@ -1248,6 +1248,7 @@ class CreateOrder(BaseTokenView):
             return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         except Exception as e:
+            logger.info(f"Order Creating error is   {e}")
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OrderListView(BaseTokenView):

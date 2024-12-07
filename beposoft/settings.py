@@ -159,7 +159,38 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 
+# AWS S3 Configuration
 
+AWS_STORAGE_BUCKET_NAME = 'beposoft-bkt'
+AWS_S3_REGION_NAME = 'ap-south-1'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+AWS_S3_FILE_OVERWRITE = False  
+AWS_DEFAULT_ACL = None        
+AWS_S3_VERIFY = True
+
+AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+
+if 'STATICFILES_STORAGE' in locals():
+    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",  
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",  
+    },
+}
 
 
 
