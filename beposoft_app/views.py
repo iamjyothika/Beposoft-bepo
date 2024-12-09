@@ -2446,17 +2446,31 @@ class InvoiceReportView(BaseTokenView):
                 rejected_orders_count = rejected_orders.count()
                 rejected_total_amount = rejected_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-                # Append staff information
+                # Collect detailed information for all orders handled by this staff
+                staff_orders_details = []
+                for order in staff_orders:
+                    staff_orders_details.append({
+                        'order_id': order.invoice,
+                        'status': order.status,
+                        'company': order.company.name if order.company else None,  # Assuming company is a related field
+                        'customer': order.customer.name if order.customer else None,  # Assuming customer is a related field
+                        'state':order.state.name if order.state else None ,
+                        'total_amount': order.total_amount,
+                        'order_date': order.order_date
+                    })
+
+                # Append the staff information and order details
                 staff_info.append({
                     'id': staff.pk,
                     'name': staff.name,
-                    'family': staff.family.name,  # Assuming family is a related field
+                    'family': staff.family.name,
                     'orders': staff_orders_count,
                     'total_amount': staff_total_amount,
                     'approved_orders': approved_orders_count,
                     'approved_total_amount': approved_total_amount,
                     'rejected_orders': rejected_orders_count,
                     'rejected_total_amount': rejected_total_amount,
+                    'orders_details': staff_orders_details  # Added the detailed orders info
                 })
 
             return Response({
@@ -2466,6 +2480,7 @@ class InvoiceReportView(BaseTokenView):
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=500)
+
 
         
 class BillsView(BaseTokenView):
