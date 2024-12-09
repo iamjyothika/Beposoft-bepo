@@ -879,6 +879,16 @@ class ExpenseSerializer(serializers.ModelSerializer):
         model = ExpenseModel
         fields = "__all__"
         
+
+
+class ExpenseModelsSerializers(serializers.ModelSerializer):
+    company = CompanyDetailsSerializer(read_only=True)
+    payed_by = UserUpdateSerilizers(read_only=True)
+    banks = BankSerializer(read_only=True)
+    class Meta :
+        model = ExpenseModel
+        fields = ['id','company','payed_by','banks','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+        
         
         
 class ParcalSerializers(serializers.ModelSerializer):

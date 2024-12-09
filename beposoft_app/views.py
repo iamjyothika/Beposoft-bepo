@@ -2201,7 +2201,7 @@ class ExpensAddView(BaseTokenView):
             if error_response:
                 return error_response
             expense_data = ExpenseModel.objects.all()
-            serializer = ExpenseSerializer(expense_data, many=True)
+            serializer = ExpenseModelsSerializers(expense_data, many=True)
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

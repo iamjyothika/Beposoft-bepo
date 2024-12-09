@@ -626,9 +626,9 @@ class GRVModel(models.Model):
 
 
 class ExpenseModel(models.Model):
-    company=models.ForeignKey(Company,on_delete=models.CASCADE)
-    payed_by=models.ForeignKey(User,on_delete=models.CASCADE)
-    bank=models.ForeignKey(Bank,on_delete=models.CASCADE)
+    company=models.ForeignKey(Company,on_delete=models.CASCADE, related_name="company")
+    payed_by=models.ForeignKey(User,on_delete=models.CASCADE, related_name="payed_by")
+    bank=models.ForeignKey(Bank,on_delete=models.CASCADE,related_name="banks")
     purpose_of_payment=models.TextField()
     amount=models.DecimalField(max_digits=10,decimal_places=2,null=True)
     expense_date=models.DateField()
