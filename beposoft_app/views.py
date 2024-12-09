@@ -2195,7 +2195,6 @@ class ExpensAddView(BaseTokenView):
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-class ExpenseGetView(BaseTokenView):
     def get(self, request):
         try:
             authUser, error_response = self.get_user_from_token(request)
@@ -2203,9 +2202,8 @@ class ExpenseGetView(BaseTokenView):
                 return error_response
             expense_data = ExpenseModel.objects.all()
             serializer = ExpenseSerializer(expense_data, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         except Exception as e:
-         
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class ExpenseUpdate(BaseTokenView):
@@ -2817,3 +2815,5 @@ class EditParcalService(APIView):
         
         except Exception as e :
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        

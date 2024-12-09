@@ -877,7 +877,7 @@ class WareHouseSerializer(serializers.ModelSerializer):
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseModel
-        fields = "_all_"
+        fields = "__all__"
         
         
         
