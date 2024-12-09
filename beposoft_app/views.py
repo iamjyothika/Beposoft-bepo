@@ -2390,7 +2390,7 @@ class SalesReportView(BaseTokenView):
               
                
                 
-            return Response({"Sales report":report_data},status=status.HTTP_200_OK)    
+            return Response({"sales_report":report_data},status=status.HTTP_200_OK)    
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
