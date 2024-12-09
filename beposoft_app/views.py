@@ -2327,72 +2327,75 @@ class GRVUpdateView(BaseTokenView):
             
 
 
-
-
 class SalesReportView(BaseTokenView):
     def get(self, request):
         try:
+            # Assuming get_user_from_token is a method that retrieves the user from a token
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-       
-            orders=Order.objects.all()
+
+            # Fetch all orders
+            orders = Order.objects.all()
+
+            # Approved order statuses
             approved_statuses = [
                 'Approved', 
                 'Shipped', 
                 'Invoice Created', 
                 'Invoice Approved', 
                 'Waiting For Confirmation',
-                'Invoice Rejectd' 
+                'Invoice Rejected',  # Typo fixed from 'Rejectd'
                 'To Print', 
                 'Processing', 
                 'Completed'
             ]
+
+            # Get distinct dates for orders
             distinct_dates = orders.values_list('order_date', flat=True).distinct()
+
+            # Prepare the report data
             report_data = []
-            total_bills=Order.objects.count()
-            total_amount = orders.aggregate(total=Sum('total_amount'))['total'] or 0
 
-
-      
             for date in distinct_dates:
                 daily_orders = orders.filter(order_date=date)
-                amount=daily_orders.aggregate(total=Sum('total_amount'))['total'] or 0
-                bills_in_date=daily_orders.count()
-               
+                total_amount = daily_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+                total_bills = daily_orders.count()
+
+                # Approved orders
                 approved_bills = daily_orders.filter(status__in=approved_statuses)
                 approved_count = approved_bills.count()
                 approved_amount = approved_bills.aggregate(total=Sum('total_amount'))['total'] or 0
 
-                
-                # Rejected bills and amount for the date
+                # Rejected orders
                 rejected_bills = daily_orders.exclude(status__in=approved_statuses)
                 rejected_count = rejected_bills.count()
                 rejected_amount = rejected_bills.aggregate(total=Sum('total_amount'))['total'] or 0
 
-                # Append the results for the date
+                # Order details for the current date
+                order_details = daily_orders.values('id','invoice', 'order_date', 'status', 'total_amount', 'customer__name', 'manage_staff__name','company__name','state__name')
+
                 report_data.append({
                     "date": date,
-                    "total_bills_in_date":bills_in_date,
-                 
-                    "amount": amount,
+                    "total_bills_in_date": total_bills,
+                    "amount": total_amount,
                     "approved": {
                         "bills": approved_count,
                         "amount": approved_amount,
-                        "state":""
                     },
                     "rejected": {
                         "bills": rejected_count,
                         "amount": rejected_amount,
                     },
+                    "order_details": list(order_details), 
                 })
 
-              
-               
-                
-            return Response({"sales_report":report_data},status=status.HTTP_200_OK)    
+            return Response({"sales_report": report_data}, status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
 
 class InvoiceReportView(BaseTokenView):
     def get(self, request, date):
