@@ -130,7 +130,7 @@ urlpatterns = [
 
 
     path('api/salesreport/',SalesReportView.as_view()),
-    path('api/invoicereport/<str:date>/',InvoiceReportView.as_view()),
+    path('api/invoice/report/<str:date>/',InvoiceReportView.as_view()),
 
     path('api/bills/<str:date>/<int:pk>/',BillsView.as_view()),
     path('api/credit/sales/',CreditSalesReportView.as_view()),

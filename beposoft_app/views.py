@@ -2400,6 +2400,7 @@ class InvoiceReportView(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+
             # Parse and validate the date
             date = parse_date(date)
             if not date:
@@ -2408,72 +2409,64 @@ class InvoiceReportView(BaseTokenView):
                     status=400
                 )
 
+            # Define approved and rejected statuses
             approved_statuses = [
                 'Approved', 
                 'Shipped', 
                 'Invoice Created', 
                 'Invoice Approved', 
                 'Waiting For Confirmation',
-                'Invoice Rejectd', 
                 'To Print', 
                 'Processing', 
                 'Completed'
             ]
+            rejected_statuses = ['Invoice Rejected', 'Cancelled', 'Refunded', 'Return']
 
-            # Query the orders by date and group by staff
-            orders = (
-                Order.objects.filter(order_date=date)
-                .select_related('state')
-                .select_related('manage_staff')
-                .select_for_update('family')
-                .values("manage_staff_username", "statename","family_name","manage_staff_id")  # Group by staff name
-                .annotate(
-                    total_bills=Count("id"),  # Total bills
-                    approved_bills=Count("id", filter=Q(status__in=approved_statuses)),  # Approved bills
-                    rejected_bills=Count("id", filter=~Q(status__in=approved_statuses)),  # Rejected bills
-                    total_amount_=Sum("total_amount", filter=Q(order_date=date)),
-                    approved_amount=Sum("total_amount", filter=Q(status__in=approved_statuses)),  # Amount for approved bills
-                    rejected_amount=Sum("total_amount", filter=~Q(status__in=approved_statuses)),  # Amount for rejected bills
-                )
-            )
+            # Filter orders for the given date
+            orders = Order.objects.filter(order_date=date)
 
-            # If no orders are found, return an error response early
-            if not orders:
-                return Response(
-                    {"status": "error", "message": "No orders found for the specified date."},
-                    status=404
-                )
+            # Get staff details and their order counts
+            staff_ids = orders.values_list('manage_staff', flat=True).distinct()
+            staff_details = User.objects.filter(id__in=staff_ids)
 
-            # Format the response
-            response_data = [
-                {
-                    "staff_name": order["manage_staff__username"],
-               
-                    "total_bills": order.get("total_bills", 0),
+            staff_info = []
+            for staff in staff_details:
+                # Fetch total orders handled by this staff
+                staff_orders = orders.filter(manage_staff=staff)
+                staff_orders_count = staff_orders.count()
+                staff_total_amount = staff_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-                    "total_amount_": order.get("total_amount_", 0),
+                # Fetch approved orders handled by this staff
+                approved_orders = staff_orders.filter(status__in=approved_statuses)
+                approved_orders_count = approved_orders.count()
+                approved_total_amount = approved_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-                 
-                    "approved_bills": order.get("approved_bills", 0),
-                    "rejected_bills": order.get("rejected_bills", 0),
-                  # Default to 0 if None
-                    "approved_amount": order.get("approved_amount", 0) or 0,  # Default to 0 if None
-                    "rejected_amount": order.get("rejected_amount", 0) or 0,  # Default to 0 if None
-                    "state_name": order.get("state__name", "Unknown") ,
-                    "family":order.get("family__name","Unknown"),
-                    "manage_staff":order.get("manage_staff_id","Unknown")
+                # Fetch rejected orders handled by this staff
+                rejected_orders = staff_orders.filter(status__in=rejected_statuses)
+                rejected_orders_count = rejected_orders.count()
+                rejected_total_amount = rejected_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-                }
-                for order in orders
-            ]
+                # Append staff information
+                staff_info.append({
+                    'id': staff.pk,
+                    'name': staff.name,
+                    'family': staff.family.name,  # Assuming family is a related field
+                    'orders': staff_orders_count,
+                    'total_amount': staff_total_amount,
+                    'approved_orders': approved_orders_count,
+                    'approved_total_amount': approved_total_amount,
+                    'rejected_orders': rejected_orders_count,
+                    'rejected_total_amount': rejected_total_amount,
+                })
 
-            return Response({"status": "success", "data": response_data}, status=200)
+            return Response({
+                "status": "success",
+                "data": staff_info,
+            })
 
         except Exception as e:
-            return Response(
-                {"status": "error", "message": str(e)},
-                status=500
-            )
+            return Response({"status": "error", "message": str(e)}, status=500)
+
         
 class BillsView(BaseTokenView):
     def get(self,request,pk,date):
