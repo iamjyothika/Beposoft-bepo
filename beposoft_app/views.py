@@ -2436,18 +2436,12 @@ class InvoiceReportView(BaseTokenView):
             for staff in staff_details:
                 # Fetch total orders handled by this staff
                 staff_orders = orders.filter(manage_staff=staff)
-                staff_orders_count = staff_orders.count()
-                staff_total_amount = staff_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
                 # Fetch approved orders handled by this staff
                 approved_orders = staff_orders.filter(status__in=approved_statuses)
-                approved_orders_count = approved_orders.count()
-                approved_total_amount = approved_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
                 # Fetch rejected orders handled by this staff
                 rejected_orders = staff_orders.filter(status__in=rejected_statuses)
-                rejected_orders_count = rejected_orders.count()
-                rejected_total_amount = rejected_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
                 # Collect detailed information for all orders handled by this staff
                 staff_orders_details = []
@@ -2462,18 +2456,11 @@ class InvoiceReportView(BaseTokenView):
                         'order_date': order.order_date
                     })
 
-                # Append the staff information and order details
                 staff_info.append({
                     'id': staff.pk,
                     'name': staff.name,
                     'family': staff.family.name,
-                    'orders': staff_orders_count,
-                    'total_amount': staff_total_amount,
-                    'approved_orders': approved_orders_count,
-                    'approved_total_amount': approved_total_amount,
-                    'rejected_orders': rejected_orders_count,
-                    'rejected_total_amount': rejected_total_amount,
-                    'orders_details': staff_orders_details  # Added the detailed orders info
+                    'orders_details': staff_orders_details  
                 })
 
             return Response({
