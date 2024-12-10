@@ -456,6 +456,7 @@ class WarehouseUpdateSerializers(serializers.ModelSerializer):
         
 class OrderModelSerilizer(serializers.ModelSerializer):
     manage_staff = serializers.CharField(source="manage_staff.name")
+    staffID = serializers.CharField(source="manage_staff.pk")
     family = serializers.CharField(source="family.name")
     bank  = BankSerializer(read_only=True)
     billing_address = ShippingAddressView(read_only=True)
@@ -468,7 +469,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ["id","manage_staff","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID","warehouse","items"]
+        fields = ["id","manage_staff","staffID","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID","warehouse","items"]
 
 
 class LedgerSerializers(serializers.ModelSerializer):
