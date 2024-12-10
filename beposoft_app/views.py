@@ -2038,7 +2038,7 @@ class CreateCompnayDetailsView(BaseTokenView):
             company = Company.objects.all()
             serializer = CompanyDetailsSerializer(company, many=True)
             return Response(
-                    {"data": serializer.data},
+                    {"data": serializer.data,"status":"success"},
                     status=status.HTTP_200_OK,
                 )
         except Exception as e:
@@ -2412,18 +2412,6 @@ class InvoiceReportView(BaseTokenView):
                     status=400
                 )
 
-            # Define approved and rejected statuses
-            approved_statuses = [
-                'Approved', 
-                'Shipped', 
-                'Invoice Created', 
-                'Invoice Approved', 
-                'Waiting For Confirmation',
-                'To Print', 
-                'Processing', 
-                'Completed'
-            ]
-            rejected_statuses = ['Invoice Rejected', 'Cancelled', 'Refunded', 'Return']
 
             # Filter orders for the given date
             orders = Order.objects.filter(order_date=date)
@@ -2437,17 +2425,12 @@ class InvoiceReportView(BaseTokenView):
                 # Fetch total orders handled by this staff
                 staff_orders = orders.filter(manage_staff=staff)
 
-                # Fetch approved orders handled by this staff
-                approved_orders = staff_orders.filter(status__in=approved_statuses)
-
-                # Fetch rejected orders handled by this staff
-                rejected_orders = staff_orders.filter(status__in=rejected_statuses)
 
                 # Collect detailed information for all orders handled by this staff
                 staff_orders_details = []
                 for order in staff_orders:
                     staff_orders_details.append({
-                        'order_id': order.invoice,
+                        'invoice': order.invoice,
                         'status': order.status,
                         'company': order.company.name if order.company else None,  # Assuming company is a related field
                         'customer': order.customer.name if order.customer else None,  # Assuming customer is a related field
