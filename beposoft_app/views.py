@@ -2710,23 +2710,40 @@ class StatewiseSalesReport(APIView):
                 # Get orders grouped by order_date for the state
                 orders_by_date = Order.objects.filter(state=state).values('order_date').distinct()
 
-                # Calculating counts for each status
+                # Calculating counts and total amounts for each status
                 total_orders = Order.objects.filter(state=state).count()
+                total_amount = Order.objects.filter(state=state).aggregate(total=Sum('total_amount'))['total'] or 0
+
                 approved_orders = Order.objects.filter(state=state, status='Approved').count()
+                approved_amount = Order.objects.filter(state=state, status='Approved').aggregate(total=Sum('total_amount'))['total'] or 0
+
                 shipped_orders = Order.objects.filter(state=state, status='Completed').count()
+                shipped_amount = Order.objects.filter(state=state, status='Completed').aggregate(total=Sum('total_amount'))['total'] or 0
+
                 cancelled_orders = Order.objects.filter(state=state, status='Cancelled').count()
-                rejected_orders = Order.objects.filter(state=state, status='Refunded').count()
+                cancelled_amount = Order.objects.filter(state=state, status='Cancelled').aggregate(total=Sum('total_amount'))['total'] or 0
+
+                rejected_orders = Order.objects.filter(state=state, status='Rejected').count()
+                rejected_amount = Order.objects.filter(state=state, status='Rejected').aggregate(total=Sum('total_amount'))['total'] or 0
+
                 returned_orders = Order.objects.filter(state=state, status='Return').count()
+                returned_amount = Order.objects.filter(state=state, status='Return').aggregate(total=Sum('total_amount'))['total'] or 0
 
                 state_data = {
                     'id': state.pk,
                     'name': state.name,
                     'total_orders_count': total_orders,
+                    'total_amount': total_amount,
                     'approved_orders_count': approved_orders,
+                    'approved_amount': approved_amount,
                     'completed_orders_count': shipped_orders,
+                    'completed_amount': shipped_amount,
                     'cancelled_orders_count': cancelled_orders,
-                    'refunded_orders_count': rejected_orders,
+                    'cancelled_amount': cancelled_amount,
+                    'rejected_orders_count': rejected_orders,
+                    'rejected_amount': rejected_amount,
                     'returned_orders_count': returned_orders,
+                    'returned_amount': returned_amount,
                     'orders': []
                 }
 
@@ -2744,7 +2761,7 @@ class StatewiseSalesReport(APIView):
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+    
 
 class StateOrderDetailsView(BaseTokenView):
     def get(self, request, state_id):
