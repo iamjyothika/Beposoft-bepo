@@ -2731,7 +2731,7 @@ class StatewiseSalesReport(APIView):
                 }
 
                 for order_date in orders_by_date:
-                    date_orders = Order.objects.filter(state=state, order_date=order_date['order_date'], status__in=['Pending', 'Waiting For Confirmation'])
+                    date_orders = Order.objects.filter(state=state, order_date=order_date['order_date'])
                     order_data = {
                         'order_date': order_date['order_date'],
                         'waiting_orders': OrderModelSerilizer(date_orders, many=True).data
