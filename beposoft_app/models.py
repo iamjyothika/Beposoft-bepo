@@ -356,6 +356,7 @@ class Order(models.Model):
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
         ('Refunded', 'Refunded'),
+        ('Rejected', 'Rejected'),
         ('Return', 'Return'),
     ], default='Pending')
     total_amount = models.FloatField()

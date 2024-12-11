@@ -2713,9 +2713,9 @@ class StatewiseSalesReport(APIView):
                 # Calculating counts for each status
                 total_orders = Order.objects.filter(state=state).count()
                 approved_orders = Order.objects.filter(state=state, status='Approved').count()
-                shipped_orders = Order.objects.filter(state=state, status='Shipped').count()
-                rejected_orders = Order.objects.filter(state=state, status='Invoice Rejectd').count()
-                refunded_orders = Order.objects.filter(state=state, status='Refunded').count()
+                shipped_orders = Order.objects.filter(state=state, status='Completed').count()
+                cancelled_orders = Order.objects.filter(state=state, status='Cancelled').count()
+                rejected_orders = Order.objects.filter(state=state, status='Refunded').count()
                 returned_orders = Order.objects.filter(state=state, status='Return').count()
 
                 state_data = {
@@ -2723,9 +2723,9 @@ class StatewiseSalesReport(APIView):
                     'name': state.name,
                     'total_orders_count': total_orders,
                     'approved_orders_count': approved_orders,
-                    'shipped_orders_count': shipped_orders,
-                    'rejected_orders_count': rejected_orders,
-                    'refunded_orders_count': refunded_orders,
+                    'completed_orders_count': shipped_orders,
+                    'cancelled_orders_count': cancelled_orders,
+                    'refunded_orders_count': rejected_orders,
                     'returned_orders_count': returned_orders,
                     'orders': []
                 }
