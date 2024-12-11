@@ -2705,7 +2705,6 @@ class StatewiseSalesReport(APIView):
         try:
             state = State.objects.all()
             serializer = StateBaseOrderSerializers(state, many=True)
-
             return Response({"data": serializer.data}, status=status.HTTP_200_OK)
 
         except Exception as e:

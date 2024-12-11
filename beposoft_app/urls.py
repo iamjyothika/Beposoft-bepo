@@ -134,11 +134,12 @@ urlpatterns = [
 
     path('api/bills/<str:date>/<int:pk>/',BillsView.as_view()),
     path('api/credit/sales/',CreditSalesReportView.as_view()),
+    
     path('api/credit/bills/<str:date>/',CreditBillsView.as_view()),
     path('api/COD/sales/',CODSalesReportView.as_view()),
     path('api/COD/bills/<str:date>/',CODBillsView.as_view()),
 
-    path('api/statewise/report/',StatewiseSalesReport.as_view()),
+    path('api/state/wise/report/',StatewiseSalesReport.as_view()),
     path('api/stateorder/detail/<int:state_id>/',StateOrderDetailsView.as_view()),
 
     path('api/deliverylist/report/<str:date>/',DeliveryListView.as_view()),

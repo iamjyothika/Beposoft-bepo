@@ -804,7 +804,7 @@ class StateBaseOrderSerializers(serializers.ModelSerializer):
 
     class Meta:
         model = State
-        fields = "_all_" 
+        fields = "__all__" 
     def get_total_invoiced_orders(self, obj):
         return Order.objects.filter(state=obj, status="Invoice Rejectd").count()
 
