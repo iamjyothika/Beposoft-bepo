@@ -34,7 +34,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://65.1.147.199"
 ]
-
+CSRF_TRUSTED_ORIGINS = [
+    'http://65.1.147.199',  # Your IP or domain
+]
 
 CORS_ALLOW_ALL_ORIGINS  = True
 CORS_ALLOW_CREDENTIALS = True
