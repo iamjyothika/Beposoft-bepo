@@ -2703,18 +2703,48 @@ class ProductSaleReportView(BaseTokenView):
 class StatewiseSalesReport(APIView):
     def get(self, request):
         try:
-            state = State.objects.all()
-            serializer = StateBaseOrderSerializers(state, many=True)
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+            states = State.objects.all()
+            data = []
+
+            for state in states:
+                # Get orders grouped by order_date for the state
+                orders_by_date = Order.objects.filter(state=state).values('order_date').distinct()
+
+                # Calculating counts for each status
+                total_orders = Order.objects.filter(state=state).count()
+                approved_orders = Order.objects.filter(state=state, status='Approved').count()
+                shipped_orders = Order.objects.filter(state=state, status='Shipped').count()
+                rejected_orders = Order.objects.filter(state=state, status='Invoice Rejectd').count()
+                refunded_orders = Order.objects.filter(state=state, status='Refunded').count()
+                returned_orders = Order.objects.filter(state=state, status='Return').count()
+
+                state_data = {
+                    'id': state.pk,
+                    'name': state.name,
+                    'total_orders_count': total_orders,
+                    'approved_orders_count': approved_orders,
+                    'shipped_orders_count': shipped_orders,
+                    'rejected_orders_count': rejected_orders,
+                    'refunded_orders_count': refunded_orders,
+                    'returned_orders_count': returned_orders,
+                    'orders': []
+                }
+
+                for order_date in orders_by_date:
+                    date_orders = Order.objects.filter(state=state, order_date=order_date['order_date'], status__in=['Pending', 'Waiting For Confirmation'])
+                    order_data = {
+                        'order_date': order_date['order_date'],
+                        'waiting_orders': OrderModelSerilizer(date_orders, many=True).data
+                    }
+                    state_data['orders'].append(order_data)
+
+                data.append(state_data)
+
+            return Response({"data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-
-
-
-
-
 
 class StateOrderDetailsView(BaseTokenView):
     def get(self, request, state_id):

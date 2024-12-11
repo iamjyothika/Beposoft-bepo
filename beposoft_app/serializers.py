@@ -783,74 +783,24 @@ class GRVModelSerializer(serializers.ModelSerializer):
 
 
 class StateBaseOrderSerializers(serializers.ModelSerializer):
-        
-    total_invoiced_orders = serializers.SerializerMethodField()
-    total_invoiced_orders_amount = serializers.SerializerMethodField()
-
-    total_delivered_orders = serializers.SerializerMethodField()
-    total_delivered_orders_amount = serializers.SerializerMethodField()
-    
-    total_cancelled_orders = serializers.SerializerMethodField()
-    total_cancelled_orders_amount = serializers.SerializerMethodField()
-    
-    total_returned_orders = serializers.SerializerMethodField()
-    total_returned_orders_amount = serializers.SerializerMethodField()
-    
-    total_rejected_orders = serializers.SerializerMethodField()
-    total_rejected_orders_amount = serializers.SerializerMethodField()
-
-    status_based_orders = serializers.SerializerMethodField()
-
+    waiting_orders = serializers.SerializerMethodField()
+    order_date = serializers.SerializerMethodField()
 
     class Meta:
         model = State
-        fields = "__all__" 
-    def get_total_invoiced_orders(self, obj):
-        return Order.objects.filter(state=obj, status="Invoice Rejectd").count()
+        fields = ['id', 'name', 'order_date', 'waiting_orders']
 
-    def get_total_invoiced_orders_amount(self, obj):
-        return Order.objects.filter(state=obj, status="Invoice Rejectd").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
-    
+    def get_waiting_orders(self, obj):
+        waiting_statuses = ['Pending', 'Waiting For Confirmation']
+        orders = Order.objects.filter(state=obj, status__in=waiting_statuses)
+        return OrderSerializer(orders, many=True).data
 
-    def get_total_delivered_orders(self, obj):
-        return Order.objects.filter(state=obj, status="Completed").count()
-
-    def get_total_delivered_orders_amount(self, obj):
-        return Order.objects.filter(state=obj, status="Completed").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
-
-    def get_total_cancelled_orders(self, obj):
-        return Order.objects.filter(state=obj, status="Cancelled").count()
-
-    def get_total_cancelled_orders_amount(self, obj):
-        return Order.objects.filter(state=obj, status="Cancelled").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
-
-    def get_total_returned_orders(self, obj):
-        return Order.objects.filter(state=obj, status="Return").count()
-
-    def get_total_returned_orders_amount(self, obj):
-        return Order.objects.filter(state=obj, status="Return").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
-
-    def get_total_rejected_orders(self, obj):
-        return Order.objects.filter(state=obj, status="Invoice Rejectd").count()
-
-    def get_total_rejected_orders_amount(self, obj):
-        return Order.objects.filter(state=obj, status="Invoice Rejectd").aggregate(total_amount=models.Sum('total_amount'))['total_amount'] or 0
-    
-    def get_status_based_orders(self, obj):
-        statuses = ["Completed", "Cancelled", "Return", "Invoice Rejected"]
-
-        data = {}
-        for i in statuses:
-            orders = Order.objects.filter(state=obj, status=i).values(
-                "id", "order_date", "total_amount","invoice","status",
-            )
-            total_amount = orders.aggregate(total=models.Sum("total_amount"))["total"] or 0
-            data[i] = {
-                "orders": list(orders),
-                "total_orders": orders.count(),
-                "total_amount": total_amount
-            }
-        return data
+    def get_order_date(self, obj):
+        # Get the order date from the first waiting order
+        first_waiting_order = Order.objects.filter(state=obj, status__in=['Pending', 'Waiting For Confirmation']).first()
+        if first_waiting_order:
+            return first_waiting_order.order_date
+        return None
     
 
 class WareHouseSerializer(serializers.ModelSerializer):
