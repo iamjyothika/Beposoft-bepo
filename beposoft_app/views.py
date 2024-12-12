@@ -2069,6 +2069,18 @@ class WarehouseDataView(BaseTokenView):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            data = Warehousedata.objects.all()
+            serializer = WarehouseBoxesDataSerializer(data, many=True)
+            return Response({"data":serializer.data,"status":"success"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         
 class WarehouseDetailView(BaseTokenView):
