@@ -2666,44 +2666,58 @@ class ProductSaleReportView(BaseTokenView):
             if error_response:
                 return error_response
 
-            # Get all sold out products (OrderItem)
-            soldouts = OrderItem.objects.filter(order__status='Shipped') 
+            # Filter sold-out orders with status 'Shipped' or 'Completed'
+            soldouts = OrderItem.objects.all()
 
-            product_sales = soldouts.values('order__order_date', 'product') \
-                                    .annotate(total_sold=Sum('quantity'))  # Sum of sold quantities
-            
+            # Aggregate total sold quantity by order date and product
+            product_sales = soldouts.values('order__order_date', 'product').annotate(total_sold=Sum('quantity'))
+
             response_data = []
             for sale in product_sales:
-                product = Products.objects.get(id=sale['product'])  # Get the product from the ID
-                stock_quantity = product.stock # Stock quantity from the product
+                try:
+                    product = Products.objects.get(id=sale['product'])
+                except Products.DoesNotExist:
+                    continue  # Skip if product is not found
 
-          
-                remaining_stock = stock_quantity - sale['total_sold']
-
-                # Get the product title (or variant if necessary)
+                # Determine product stock based on type
                 if product.type == 'single':
-                    product_title = product.name 
+                    product_stock = product.stock
+                    product_title = product.name
                 else:
-                    # For variant products, retrieve the variant name
+                    # Handle variant products
                     variant_product = VariantProducts.objects.filter(product=product).first()
+
                     if variant_product:
-                        product_title = variant_product.name  # Use the variant name if available
+                        if variant_product.is_variant:
+                            # Sum stock from all attribute variants
+                            product_stock = ProductAttributeVariant.objects.filter(
+                                variant_product=variant_product
+                            ).aggregate(total_stock=Sum('stock'))['total_stock'] or 0
+                        else:
+                            # Use variant product's stock directly if not a variant
+                            product_stock = variant_product.stock
+
+                        product_title = variant_product.name
                     else:
+                        # Fallback for missing variant product
+                        product_stock = 0
                         product_title = product.name
 
-                # Prepare data for the response
+                # Calculate remaining stock
+                remaining_stock = product_stock - sale['total_sold']
+
+                # Append data to response
                 response_data.append({
                     "date": sale['order__order_date'],
                     "product_title": product_title,
-                    "stock_quantity": stock_quantity,
+                    "stock_quantity": product_stock + sale['total_sold'],
                     "items_sold": sale['total_sold'],
-                    "remaining_stock": remaining_stock
+                    "remaining_stock": product_stock + sale['total_sold'] -sale['total_sold'],
                 })
 
             return Response({"status": "success", "data": response_data}, status=200)
 
         except Exception as e:
-         
             return JsonResponse(
                 {"status": "error", "message": str(e)},
                 status=500
@@ -2805,10 +2819,9 @@ class DeliveryListView(BaseTokenView):
             if error_response:
                 return error_response
             data=Warehousedata.objects.filter(shipped_date=date)
-            serializer=WareHouseSerializer(data)
+            serializer=WareHouseSerializer(data, many=True)
             return Response({"data":serializer.data},status=status.HTTP_200_OK)
         except Exception as e:
-           
             return JsonResponse({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
