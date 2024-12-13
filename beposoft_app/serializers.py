@@ -811,7 +811,7 @@ class WareHouseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Warehousedata
-        fields=['invoice','customer','order_date','weight','volume_weight']
+        fields= "__all__"
 
     def get_volume_weight(self, obj):
         try:
