@@ -1641,7 +1641,7 @@ class CreateBankAccountView(BaseTokenView):
 
             serializer = BankSerializer(data=data, many=True)
             if serializer.is_valid():
-                serializer.save(created_user=authUser)
+                serializer.save(created_user=authUser.pk)
                 return Response(
                     {"status": "success", "message": "Bank account(s) created successfully."},
                     status=status.HTTP_201_CREATED,

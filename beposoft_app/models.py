@@ -614,14 +614,14 @@ class GRVModel(models.Model):
     updated_at = models.DateTimeField(null=True, blank=True)
 
     def update_status(self, new_status):
-        """
+        """112
         Updates the status and sets the updated_at field to the current time.
         """
-        if self.status != new_status:  # Check if the status is changing
+        if self.status != new_status: 
             self.status = new_status
-            self.updated_at = datetime.now()  # Set current timestamp
+            self.updated_at = datetime.now() 
             print(f"Status updated to '{new_status}' on {self.updated_at}")
-            self.save()  # Save the changes
+            self.save()  
         else:
             print("No change in status.")
 
