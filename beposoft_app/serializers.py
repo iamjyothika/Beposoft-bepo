@@ -212,10 +212,7 @@ class ProductSerializerView(serializers.ModelSerializer):
 
     class Meta:
         model = Products
-        fields = [
-            "id", "created_user", "name", "hsn_code", "type", "unit", 'family',
-            "purchase_rate", "tax", "image", "exclude_price", "selling_price", "stock","single_products","variant_products"
-        ]
+        fields = "__all__"
         
     def to_representation(self, instance):
         # Call the parent method to get the default representation

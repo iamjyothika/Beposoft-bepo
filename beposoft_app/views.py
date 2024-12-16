@@ -958,7 +958,8 @@ class VariantProductCreate(BaseTokenView):
 
             # Get request data
             product_id = request.data.get("product")
-            attributes = request.data.get("attributes", "[]")  
+            attributes = request.data.get("attributes", "[]")
+            groupid = request.data.get("groupid")
 
             try:
                 attributes = json.loads(attributes) 
@@ -971,6 +972,9 @@ class VariantProductCreate(BaseTokenView):
             product_instance = Products.objects.filter(pk=product_id).first()
             if not product_instance:
                 return Response({"message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # Get the existing product's family
+            existing_family = product_instance.family.all()  # Retrieve the product's existing family
 
             # Process attributes for variants
             if product_instance.type == "variant":
@@ -994,23 +998,52 @@ class VariantProductCreate(BaseTokenView):
                     # Create the variant name based on attributes
                     name = f"{product_instance.name}-{'-'.join(combination)}"
 
-                    # Save all attribute values in the 'color' column (you can rename this as needed)
-                    VariantProducts.objects.create(
+                    # Initialize values for color and size based on attribute names
+                    color = None
+                    size = None
+
+                    # Assign attribute values to the appropriate columns
+                    for attr_name, value in combined_attr.items():
+                        if attr_name.lower() == "color":
+                            color = value
+                        elif attr_name.lower() == "size":
+                            size = value
+
+                    # Create the variant product with the same family
+                    variant_product = Products.objects.create(
                         created_user=User.objects.get(pk=authUser.pk),
-                        product=product_instance,
                         name=name,
-                        color=all_attributes  # Save all attributes in the 'color' column
+                        type="variant",
+                        unit=product_instance.unit,
+                        purchase_rate=product_instance.purchase_rate,
+                        tax=product_instance.tax,
+                        exclude_price=product_instance.exclude_price,
+                        selling_price=product_instance.selling_price,
+                        stock=product_instance.stock,
+                        color=color,
+                        size=size,
+                        groupID=groupid,
                     )
 
+                    # Add the existing family to the variant product using set()
+                    variant_product.family.set(existing_family)
+
             else:
+                # If it's not a variant, just handle the image uploads
                 for image in images:
-                    SingleProducts.objects.create(product=product_instance, created_user=User.objects.get(pk=authUser.pk), image=image)
+                    SingleProducts.objects.create(
+                        product=product_instance,
+                        created_user=User.objects.get(pk=authUser.pk),
+                        image=image
+                    )
 
             return Response({"message": "Product added successfully"}, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}", exc_info=True)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class VariantProductsByProductView(BaseTokenView):
