@@ -215,6 +215,8 @@ class Shipping(models.Model):
 
 
 
+import uuid
+
 class Products(models.Model):
     PRODUCT_TYPES = [
         ('single', 'Single'),
@@ -231,7 +233,7 @@ class Products(models.Model):
         ('SET OF 6', 'SET OF 6'),
         ('SET OF 8', 'SET OF 8'),
     ]
-    created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
+    created_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=500)
     hsn_code = models.CharField(max_length=100)
     family = models.ManyToManyField(Family, related_name='familys')
@@ -239,11 +241,18 @@ class Products(models.Model):
     unit = models.CharField(max_length=100, choices=UNIT_TYPES, default="BOX")
     purchase_rate = models.FloatField()
     tax = models.FloatField() 
-    image = models.ImageField(upload_to='images/',null=True)
+    image = models.ImageField(upload_to='images/', null=True)
     exclude_price = models.FloatField(editable=False)  
     selling_price = models.FloatField(null=True)  
     stock = models.IntegerField(default=0)
-    
+    color = models.CharField(max_length=100, null=True, blank=True)
+    size = models.CharField(max_length=100, null=True, blank=True)
+    groupID = models.CharField(max_length=100, null=True, blank=True)
+    variantID = models.CharField(max_length=100, unique=True, null=True, blank=True)
+
+    def generate_variant_id(self):
+        """Generates a unique variantID using UUID"""
+        return str(uuid.uuid4())
 
     def calculate_exclude_price(self):
         if self.selling_price is not None:
@@ -252,11 +261,15 @@ class Products(models.Model):
             self.exclude_price = 0
 
     def save(self, *args, **kwargs):
+        # Generate variantID if not already set
+        if not self.variantID:
+            self.variantID = self.generate_variant_id()
         self.calculate_exclude_price()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
+
 
 
 class SingleProducts(models.Model) :
