@@ -175,35 +175,8 @@ class FamilySerializer(serializers.ModelSerializer):
         fields = "__all__"
         
         
-class SizeSerializers(serializers.ModelSerializer):
-    class Meta :
-        model = ProductAttributeVariant
-        fields = ["id","attribute","stock"]
         
-class VariantImageSerilizers(serializers.ModelSerializer):
-    class Meta :
-        model = VariantImages
-        fields  = ["id","image"]
-        
-class VariantProductSerializerView(serializers.ModelSerializer):
-    created_user = serializers.CharField(source="created_user.name") 
-    variant_images = VariantImageSerilizers(many=True, read_only=True) 
-    sizes = SizeSerializers(many=True, read_only=True)
 
-    class Meta:
-        model = VariantProducts
-        fields = ['id', 'created_user', 'name', 'stock', 'color', 'is_variant', 'variant_images',"sizes"]
-        
-    def to_representation(self, instance):
-        # Call the parent method to get the default representation
-        representation = super().to_representation(instance)
-
-        # If 'is_variant' is False, remove 'sizes' from the serialized output
-        if instance.is_variant:
-            representation.pop('stock', None)  # Hide stock if is_variant is True
-        else:
-            representation.pop('sizes', None)  # Hide sizes if is_variant is False
-        return representation
     
     
     
@@ -353,32 +326,6 @@ class ShippingAddressView(serializers.ModelSerializer):
 
 
 
-class VariantProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VariantProducts
-        fields = "__all__"
-        
-
-class VariantImageSerilizers(serializers.ModelSerializer):
-    class Meta :
-        model = VariantImages
-        fields  = ["id","image"]
-        
-
-class SizeSerializers(serializers.ModelSerializer):
-    class Meta :
-        model = ProductAttributeVariant
-        fields = "__all__"
-        
-
-# class VariantProductSerializerView(serializers.ModelSerializer):
-#     created_user = serializers.CharField(source="created_user.name") 
-#     variant_images = VariantImageSerilizers(many=True, read_only=True) 
-#     sizes = SizeSerializers(many=True, read_only=True)
-
-#     class Meta:
-#         model = VariantProducts
-#         fields = ['id', 'created_user', 'name', 'stock', 'color', 'is_variant', 'variant_images',"sizes"]
 
 class SingleProductsViewSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="product.name")
@@ -434,22 +381,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = OrderItem
-        fields = [
-            "id",
-            "name",
-            "order",
-            "product",
-            "variant",
-            "size",
-            "description",
-            "rate",
-            "tax",
-            "discount",
-            "quantity",
-            "actual_price",
-            "exclude_price",
-            "images"
-        ]
+        fields = "__all__"
         
         
     def get_name(self, obj):
@@ -469,18 +401,10 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     
 
     def get_images(self, obj):
-        # Return a list of images based on the product type
         image_urls = []
 
-        if obj.product.type == "single":
-            # Fetch all images from the SingleProducts model for this product
-            single_images = SingleProducts.objects.filter(product=obj.product)
-            image_urls = [single_image.image.url for single_image in single_images if single_image.image]
-
-        elif obj.variant:
-            # Fetch all images from the VariantImages model for this variant
-            variant_images = VariantImages.objects.filter(variant_product=obj.variant)
-            image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
+        single_images = SingleProducts.objects.filter(product=obj.product)
+        image_urls = [single_image.image.url for single_image in single_images if single_image.image]
 
         return image_urls if image_urls else None
 
@@ -568,6 +492,9 @@ class BepocartSerializers(serializers.ModelSerializer):
         
 class BepocartSerializersView(serializers.ModelSerializer):
     name = serializers.CharField(source="product.name")
+    tax = serializers.CharField(source="product.tax")
+    price = serializers.CharField(source="product.selling_price")
+    exclude_price = serializers.CharField(source="product.exclude_price")
     class Meta:
         model = BeposoftCart
         fields = "__all__"
@@ -592,7 +519,7 @@ class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
         
 class PerfomaInvoiceProducts(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
+    name = serializers.CharField(source="product.name")
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
     
@@ -616,13 +543,7 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
         ]
         
         
-    def get_name(self, obj):
-        # Check if the product is a single or variant type
-        if obj.product.type == "single":
-            return obj.product.name
-        elif obj.variant:
-            return obj.variant.name
-        return None
+
     
     def get_actual_price(self, obj):
         # Calculate the actual price based on the product type
@@ -633,18 +554,10 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
     
 
     def get_images(self, obj):
-        # Return a list of images based on the product type
         image_urls = []
 
-        if obj.product.type == "single":
-            # Fetch all images from the SingleProducts model for this product
-            single_images = SingleProducts.objects.filter(product=obj.product)
-            image_urls = [single_image.image.url for single_image in single_images if single_image.image]
-
-        elif obj.variant:
-            # Fetch all images from the VariantImages model for this variant
-            variant_images = VariantImages.objects.filter(variant_product=obj.variant)
-            image_urls = [variant_image.image.url for variant_image in variant_images if variant_image.image]
+        single_images = SingleProducts.objects.filter(product=obj.product)
+        image_urls = [single_image.image.url for single_image in single_images if single_image.image]
 
         return image_urls if image_urls else None
         

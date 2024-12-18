@@ -59,13 +59,6 @@ urlpatterns = [
 
     path('api/add/product/variant/',VariantProductCreate.as_view(),name="add-variant-product"),# completed
     path('api/products/<int:pk>/variants/', VariantProductsByProductView.as_view(), name='variant-products-by-product'), # completed
-    path('api/product/<int:pk>/variant/data/', VariantProductDetailView.as_view(), name='variant-product-detail'), # completed
-    path('api/variant/<int:pk>/images/',VariantProductImageView.as_view()),
-    path('api/variant/<int:pk>/delete/',VariantImageDelete.as_view()),
-    
-    
-    path('api/variant/product/<int:id>/size/view/',VariantProductsSizeView.as_view()),
-    path('api/variant/product/<int:pk>/size/edit/',VariantProductsSizeDelete.as_view()),
     
 
 

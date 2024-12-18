@@ -1108,141 +1108,6 @@ class VariantProductsByProductView(BaseTokenView):
 
         
 
-class VariantProductDetailView(BaseTokenView):
-    
-    def get_product(self, pk):
-        return get_object_or_404(VariantProducts, pk=pk)
-        
-    def get(self, request, pk):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-                
-            variant_product = self.get_product(pk)
-            if variant_product.is_variant == False:
-                sizes = ProductAttributeVariant.objects.filter(variant_product =variant_product )
-                for i in sizes:
-                    i.delete()
-            serializer = VariantProductSerializer(variant_product)
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
-            
-        except VariantProducts.DoesNotExist:
-            return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def put(self, request, pk):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-            
-            images = request.FILES.getlist('images')
-            sizes = request.data.getlist('size',[])
-                
-            variant_product = self.get_product(pk)
-            serializer = VariantProductSerializer(variant_product, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                for size in sizes :
-                    ProductAttributeVariant.objects.create(attribute = size ,variant_product = variant_product)
-                for image in images:
-                    VariantImages.objects.create(variant_product=variant_product ,image=image)
-                
-                return Response({"message": "Variant product updated successfully", "variant_product": serializer.data}, status=status.HTTP_200_OK)
-            
-            return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            
-        
-        except VariantProducts.DoesNotExist:
-            return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def delete(self, request, pk):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-                
-            variant_product = self.get_product(pk)
-            variant_product.delete()
-            return Response({"message": "Variant product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-        
-        except VariantProducts.DoesNotExist:
-            return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-
-
-
-
-class VariantProductImageView(APIView):
-    def get(self,request,pk):
-        try:
-            variant_product = VariantProducts.objects.get(pk=pk)
-            images = VariantImages.objects.filter(variant_product=variant_product)
-            serializer = VariantImageSerilizers(images, many=True)
-            return Response({"images": serializer.data}, status=status.HTTP_200_OK)
-        except VariantProducts.DoesNotExist:
-            return Response({"message": "Variant product not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        
-class VariantImageDelete(BaseTokenView):
-    def delete(self, request, pk):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-
-            image = get_object_or_404(VariantImages, pk=pk)
-            image.delete()
-            return Response({"message": "Image deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
-        except VariantImages.DoesNotExist:
-            return Response({"message": "Image not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        
-class VariantProductsSizeView(APIView):
-    def get(self, request,id):
-        try:
-            products = ProductAttributeVariant.objects.filter(variant_product=id)
-            if not  products:
-                return Response({"message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
-            serializer = SizeSerializers(products, many=True)
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class VariantProductsSizeDelete(APIView):
-    def delete(self, request, pk):
-        try:
-            size = get_object_or_404(ProductAttributeVariant, pk=pk)
-            size.delete()
-            return Response({"message": "Size deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response({"message": "An error occurred while deleting the size"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def put(self, request, pk):
-        try:
-            size = get_object_or_404(ProductAttributeVariant, pk=pk)
-            serializer = SizeSerializers(size, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({"message": "Size updated successfully", "size": serializer.data}, status=status.HTTP_200_OK)
-            return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            # Log the exception details
-            return Response({"message": "An error occurred while updating the size"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
     
 
 class CreateOrder(BaseTokenView):
@@ -1274,27 +1139,19 @@ class CreateOrder(BaseTokenView):
                 
 
                 # Check stock and decrement
-                if product.type == 'single':
-                    if product.stock < quantity:
-                        return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
-                    product.stock -= int(quantity)
-                    product.save()
+              
+                if product.stock < quantity:
+                    return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
+                product.stock -= int(quantity)
+                product.save()
                 
-                elif product.type == 'variant':
-                    variant_product = get_object_or_404(VariantProducts, pk=item_data.variant.pk)
-                    stock_item = get_object_or_404(ProductAttributeVariant, pk=item_data.size.pk) if variant_product.is_variant else variant_product
-                    
-                    if stock_item.stock < quantity:
-                        return Response({"status": "error", "message": "Insufficient stock for variant product"}, status=status.HTTP_400_BAD_REQUEST)
-                    stock_item.stock -= int(quantity)
-                    stock_item.save()
 
                 # Create order item for each valid cart item
                 OrderItem.objects.create(
                     order=order,
                     product=product,
                     variant=item_data.variant,
-                    size=item_data.size,
+                    size=item_data.size if item_data.size else None,
                     quantity=int(quantity),
                     discount=discount,
                     tax=tax,
@@ -1742,7 +1599,6 @@ class BankAccountView(BaseTokenView):
         
         
 class ExistedOrderAddProducts(BaseTokenView):
-    PRODUCT_TYPE_SINGLE = 'single'
     
     def post(self, request, pk):
         try:
@@ -1761,14 +1617,7 @@ class ExistedOrderAddProducts(BaseTokenView):
 
             
 
-            if product.type == self.PRODUCT_TYPE_SINGLE:
-                return self.add_single_product_to_cart(product, order, quantity)
-            else:
-                if 'variant' not in request.data:
-                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
-                
-                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
-                return self.add_variant_product_to_cart(product, variant, quantity, order, request)
+            return self.add_single_product_to_cart(product, order, quantity)
         
         except KeyError as e:
             return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1786,38 +1635,7 @@ class ExistedOrderAddProducts(BaseTokenView):
             tax = product.tax,
         )
         return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
-
-    def add_variant_product_to_cart(self, product, variant, quantity, order, request):
-        """Add a variant product to the cart."""
-        if variant.is_variant:
-            if 'size' not in request.data:
-                return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
-            OrderItem.objects.create(
-                product=product,        # Product instance
-                order=order,            # Order instance
-                quantity=quantity, 
-                variant=variant, 
-                size=size,
-                tax = product.tax,
-                rate = product.selling_price,
-                
-            )
-        else:
-            OrderItem.objects.create(
-                product=product,        # Product instance
-                order=order,            # Order instance
-                quantity=quantity, 
-                variant=variant,
-                tax = product.tax,
-                rate = product.selling_price,
-                
-                
-                
-            )
         
-        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
     
 class RemoveExistsOrderItems(BaseTokenView):
     
@@ -1954,20 +1772,12 @@ class CreatePerfomaInvoice(BaseTokenView):
                 
 
                 # Check stock and decrement
-                if product.type == 'single':
-                    if product.stock < quantity:
-                        return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
-                    product.stock -= int(quantity)
-                    product.save()
-                
-                elif product.type == 'variant':
-                    variant_product = get_object_or_404(VariantProducts, pk=item_data.variant.pk)
-                    stock_item = get_object_or_404(ProductAttributeVariant, pk=item_data.size.pk) if variant_product.is_variant else variant_product
-                    
-                    if stock_item.stock < quantity:
-                        return Response({"status": "error", "message": "Insufficient stock for variant product"}, status=status.HTTP_400_BAD_REQUEST)
-                    stock_item.stock -= int(quantity)
-                    stock_item.save()
+                if product.stock < quantity:
+                    return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
+                product.stock -= int(quantity)
+                product.save()
+            
+               
 
                 # Create order item for each valid cart item
                 PerfomaInvoiceOrderItem.objects.create(
@@ -2719,33 +2529,12 @@ class ProductSaleReportView(BaseTokenView):
                     continue  # Skip if product is not found
 
                 # Determine product stock based on type
-                if product.type == 'single':
-                    product_stock = product.stock
-                    product_title = product.name
-                else:
-                    # Handle variant products
-                    variant_product = VariantProducts.objects.filter(product=product).first()
-
-                    if variant_product:
-                        if variant_product.is_variant:
-                            # Sum stock from all attribute variants
-                            product_stock = ProductAttributeVariant.objects.filter(
-                                variant_product=variant_product
-                            ).aggregate(total_stock=Sum('stock'))['total_stock'] or 0
-                        else:
-                            # Use variant product's stock directly if not a variant
-                            product_stock = variant_product.stock
-
-                        product_title = variant_product.name
-                    else:
-                        # Fallback for missing variant product
-                        product_stock = 0
-                        product_title = product.name
-
-                # Calculate remaining stock
+                product_stock = product.stock
+                product_title = product.name
+               
                 remaining_stock = product_stock - sale['total_sold']
 
-                # Append data to response
+                # Append data to responses
                 response_data.append({
                     "date": sale['order__order_date'],
                     "product_title": product_title,

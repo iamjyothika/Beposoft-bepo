@@ -276,7 +276,7 @@ class Products(models.Model):
 
 class SingleProducts(models.Model) :
     created_user = models.ForeignKey(User,on_delete=models.CASCADE)
-    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='single_products')
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='images/')
 
     class Meta:
@@ -286,43 +286,8 @@ class SingleProducts(models.Model) :
         return f"{self.product.name}"
 
 
-class VariantProducts(models.Model):
-    created_user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='variant_products')
-    name = models.CharField(max_length=500)
-    stock = models.PositiveBigIntegerField(default=0, null=True)
-    color = models.CharField(max_length=100, null=True, blank=True)
-    is_variant = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = "variant_product"
-
-    def __str__(self):
-        return self.name
-    
-    
-class VariantImages(models.Model):
-    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE, related_name='variant_images')
-    image = models.ImageField(upload_to='images/')
-    class Meta:
-        db_table = "variant_images"
-        
-    def __str__(self):
-        return f"{self.variant_product.name} - {self.image}"
-        
-    
 
 
-class ProductAttributeVariant(models.Model):
-    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,related_name="sizes")
-    attribute = models.CharField(max_length=100)
-    stock = models.PositiveBigIntegerField(default=0)
-
-    class Meta:
-        db_table = "product_attribute_variant"
-
-    def __str__(self):
-        return f"{self.variant_product.name} - {self.attribute}"
     
 class Bank(models.Model):
     created_user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
@@ -425,8 +390,6 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
-    size = models.ForeignKey(ProductAttributeVariant, on_delete=models.CASCADE,null=True)
     description = models.CharField(max_length=100,null=True)
     rate = models.IntegerField()  # without GST
     tax = models.PositiveIntegerField()  # tax percentage
@@ -570,8 +533,6 @@ class PerfomaInvoiceOrder(models.Model):
 class PerfomaInvoiceOrderItem(models.Model):
     order = models.ForeignKey(PerfomaInvoiceOrder, on_delete=models.CASCADE, related_name='perfoma_items')
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
-    size = models.ForeignKey(ProductAttributeVariant, on_delete=models.CASCADE,null=True)
     description = models.CharField(max_length=100,null=True)
     rate = models.IntegerField()  # without GST
     tax = models.PositiveIntegerField()  # tax percentage
