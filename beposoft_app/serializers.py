@@ -204,29 +204,82 @@ class VariantProductSerializerView(serializers.ModelSerializer):
         else:
             representation.pop('sizes', None)  # Hide sizes if is_variant is False
         return representation
-
-class ProductSerializerView(serializers.ModelSerializer):
-    single_products = SingleProductSerializer(many=True, read_only=True)
-    variant_products = VariantProductSerializerView(many=True, read_only=True)
     
+    
+    
+class ProductSingleviewSerializres(serializers.ModelSerializer):
+    variantIDs = serializers.SerializerMethodField()
 
     class Meta:
         model = Products
         fields = "__all__"
-        
-    def to_representation(self, instance):
-        # Call the parent method to get the default representation
-        representation = super().to_representation(instance)
 
-        # If the product type is 'single', only show 'single_products' and 'stock'
-        if instance.type == 'single':
-            representation.pop('variant_products', None)  # Hide variant_products
-        # If the product type is 'variant', only show 'variant_products'
-        elif instance.type == 'variant':
-            representation.pop('single_products', None)  # Hide single_products
-            representation.pop('stock', None)  # Hide stock if type is variant
+    def get_variantIDs(self, obj):
+        """
+        If the product is a variant, return all variants for the same groupID,
+        ensuring the current product is not included and preventing duplicates.
+        """
+        if obj.type == 'variant':  # Check if the product is a variant
+            # Filter products with the same groupID but exclude the current product
+            variants = Products.objects.filter(groupID=obj.groupID).exclude(id=obj.id)
+            
+            # Track unique attributes to avoid duplicates
+            seen_attributes = set()
+            variant_list = []
+
+            for variant in variants:
+                # Avoid duplicate products based on their attributes (you can use other fields as well)
+                if variant.name not in seen_attributes:
+                    seen_attributes.add(variant.name)
+                    variant_list.append({
+                        "id": variant.pk,
+                        "groupID": variant.groupID,
+                        "name": variant.name,  # Adjust field as needed
+                        "stock": variant.stock,
+                        "image": variant.image.url if variant.image else None,  # Image URL handling
+                        "selling_price": variant.selling_price  # Selling price field
+                    })
+
+            return variant_list
+        return [] 
+
+class ProductSerializerView(serializers.ModelSerializer):
+    variantIDs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Products
+        fields = "__all__"
+    
+    def get_variantIDs(self, obj):
+        """
+        If the product is a variant, return all variantIDs for the same groupID,
+        ensuring no duplicate attributes.
+        """
+        if obj.type == 'variant':  # Ensure you're using the correct value for 'variant'
+            variants = Products.objects.filter(groupID=obj.groupID)
+            
+            # Track unique attributes to avoid duplicates
+            seen_attributes = set()
+            variant_list = []
+
+            for variant in variants:
+                # Make sure the attribute you're checking exists in your model or adjust accordingly
+                # Assuming you're using 'name' or any other attribute instead of 'attribute'
+                if variant.name not in seen_attributes:
+                    seen_attributes.add(variant.name)
+                    variant_list.append({
+                        "id": variant.pk,
+                        "groupID": variant.groupID,
+                        "name": variant.name,
+                        "image": variant.image.url if variant.image else None,  
+                        "price": variant.selling_price ,
+                        "stock": variant.stock
+                    })
+
+            return variant_list
+        return []
         
-        return representation
+
 
     
 class ProductSerializer(serializers.ModelSerializer):

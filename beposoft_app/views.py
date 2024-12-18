@@ -467,15 +467,39 @@ class ProductListView(BaseTokenView):
             if error_response:
                 return error_response
 
-            product = Products.objects.all()
-            serializer = ProductSerializerView(product, many=True)
-            return Response({"message": "Product list successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
-                        
+            # Fetch all products
+            products = Products.objects.all()
+
+            # Initialize a set to track unique groupIDs
+            seen_group_ids = set()
+            unique_products = []
+
+            # Iterate through products and filter out duplicates by groupID
+            for product in products:
+                if product.groupID not in seen_group_ids:
+                    seen_group_ids.add(product.groupID)
+                    unique_products.append(product)
+
+            # Serialize the unique products list
+            serializer = ProductSingleviewSerializres(unique_products, many=True)
+
+            return Response({
+                "message": "Product list successfully retrieved",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
         except authUser.DoesNotExist:
-            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        
+            return Response({
+                "status": "error",
+                "message": "User does not exist"
+            }, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "status": "error",
+                "message": "An error occurred",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -959,7 +983,6 @@ class VariantProductCreate(BaseTokenView):
             # Get request data
             product_id = request.data.get("product")
             attributes = request.data.get("attributes", "[]")
-            groupid = 256314
 
             try:
                 attributes = json.loads(attributes) 
@@ -1023,7 +1046,7 @@ class VariantProductCreate(BaseTokenView):
                         stock=product_instance.stock,
                         color=color,
                         size=size,
-                        groupID=groupid,
+                        groupID=product_instance.groupID,
                     )
 
                     # Add the existing family to the variant product using set()
@@ -1055,24 +1078,8 @@ class VariantProductsByProductView(BaseTokenView):
             if error_response:
                 return error_response
 
-            product = Products.objects.filter(pk=pk).first()
-            if not product:
-                return Response({"message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            # Check product type to determine whether it has variants or is a single product
-            if product.type == "variant":
-                variant_products = VariantProducts.objects.filter(product=product)
-                if not variant_products.exists():
-                    return Response({"message": "No variant products found for this product"}, status=status.HTTP_404_NOT_FOUND)
-                
-                serializer = VariantProductSerializerView(variant_products, many=True)
-            else:
-                single_product = SingleProducts.objects.filter(product=product)
-                if not single_product.exists():
-                    return Response({"message": "No single products found for this product"})
-                
-                serializer = SingleProductsViewSerializer(single_product, many=True)
-
+            product = get_object_or_404(Products,pk=pk)
+            serializer = ProductSerializerView(product)
             return Response({"products": serializer.data}, status=status.HTTP_200_OK)
         
         except Exception as e:
