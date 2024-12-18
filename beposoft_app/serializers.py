@@ -237,6 +237,8 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "name": variant.name,  # Adjust field as needed
                         "stock": variant.stock,
                         "image": variant.image.url if variant.image else None,  # Image URL handling
+                        "color":variant.color if variant.color else None,
+                        "size": variant.size if variant.size else None,
                         "selling_price": variant.selling_price  # Selling price field
                     })
 
@@ -273,6 +275,8 @@ class ProductSerializerView(serializers.ModelSerializer):
                         "name": variant.name,
                         "image": variant.image.url if variant.image else None,  
                         "price": variant.selling_price ,
+                        "color":variant.color if variant.color else None,
+                        "size": variant.size if variant.size else None,
                         "stock": variant.stock
                     })
 
