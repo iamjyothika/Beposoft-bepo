@@ -500,7 +500,24 @@ class ProductListView(BaseTokenView):
                 "message": "An error occurred",
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
+class ListAllProducts(BaseTokenView):  
+    def get(self, request):
+        auth_user, error_response = self.get_user_from_token(request)
+        if error_response:
+            return error_response
 
+        try:
+            products = Products.objects.all()
+            serializer = ProductsListViewSerializers(products, many=True)
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error fetching products: {str(e)}")
+            return Response({
+                "error": "An error occurred while retrieving products. Please try again later."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
 
 
 
