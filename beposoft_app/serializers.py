@@ -374,7 +374,7 @@ class PaymentRecieptsViewSerializers(serializers.ModelSerializer):
 
 class OrderItemModelSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
+    name = serializers.CharField(source="product.name")
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
     
@@ -383,14 +383,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = "__all__"
         
-        
-    def get_name(self, obj):
-        # Check if the product is a single or variant type
-        if obj.product.type == "single":
-            return obj.product.name
-        elif obj.variant:
-            return obj.variant.name
-        return None
+ 
     
     def get_actual_price(self, obj):
         # Calculate the actual price based on the product type
@@ -451,7 +444,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ["id","manage_staff","staffID","company","customer","invoice","billing_address","shipping_mode","code_charge","order_date","family","state","payment_status","status","total_amount","bank","payment_method","payment_receipts","shipping_charge","customerID","warehouse","items"]
+        fields = "__all__"
 
 
 class LedgerSerializers(serializers.ModelSerializer):
@@ -525,22 +518,7 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
     
     class Meta:
         model = PerfomaInvoiceOrderItem
-        fields = [
-            "id",
-            "name",
-            "order",
-            "product",
-            "variant",
-            "size",
-            "description",
-            "rate",
-            "tax",
-            "discount",
-            "quantity",
-            "actual_price",
-            "exclude_price",
-            "images"
-        ]
+        fields = "__all__"
         
         
 
