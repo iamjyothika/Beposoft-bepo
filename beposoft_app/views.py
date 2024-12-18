@@ -1573,37 +1573,17 @@ class Cart(BaseTokenView):
             product = get_object_or_404(Products, pk=request.data.get("product"))
             quantity = request.data.get("quantity")
             
-            if product.type == self.PRODUCT_TYPE_SINGLE:
-                return self.add_single_product_to_cart(product, quantity, authUser)
-            else:
-                if 'variant' not in request.data:
-                    return Response({"status": "error", "message": "Variant is required."}, status=status.HTTP_400_BAD_REQUEST)
-                
-                variant = get_object_or_404(VariantProducts, pk=request.data['variant'])
-                
-                return self.add_variant_product_to_cart(product, variant, quantity, request, authUser)
-        
+            return self.add_product_in_cart(product, quantity, authUser)
+           
         except KeyError as e:
             return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def add_single_product_to_cart(self, product, quantity, user):
-        """Add a single product to the cart."""
+    def add_product_in_cart(self, product, quantity, user):
         BeposoftCart.objects.create(product=product, user=user, quantity=quantity)
         return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
 
-    def add_variant_product_to_cart(self, product, variant, quantity, request, user):
-        """Add a variant product to the cart."""
-        if variant.is_variant:
-            if 'size' not in request.data:
-                return Response({"status": "error", "message": "Size is required for this variant product."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            size = get_object_or_404(ProductAttributeVariant, pk=request.data['size'])
-            BeposoftCart.objects.create(product=product, quantity=quantity, variant=variant, user=user, size=size)
-        else:
-            BeposoftCart.objects.create(product=product, quantity=quantity, variant=variant, user=user)
-        return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
 
     
 
