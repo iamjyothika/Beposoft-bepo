@@ -443,8 +443,6 @@ class OrderItem(models.Model):
 class BeposoftCart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True,blank=True,)
-    size = models.ForeignKey(ProductAttributeVariant,on_delete=models.CASCADE, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
     discount = models.IntegerField(null=True, blank=True)
     note = models.TextField(blank=True, null=True)

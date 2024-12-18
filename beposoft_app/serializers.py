@@ -239,7 +239,9 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "image": variant.image.url if variant.image else None,  # Image URL handling
                         "color":variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
-                        "selling_price": variant.selling_price  # Selling price field
+                        "selling_price": variant.selling_price , # Selling price field
+                        "created_user":variant.created_user.name
+                        
                     })
 
             return variant_list
@@ -277,7 +279,9 @@ class ProductSerializerView(serializers.ModelSerializer):
                         "price": variant.selling_price ,
                         "color":variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
-                        "stock": variant.stock
+                        "stock": variant.stock,
+                        "created_user":variant.created_user.name
+                        
                     })
 
             return variant_list
@@ -569,23 +573,8 @@ class BepocartSerializersView(serializers.ModelSerializer):
 
     class Meta:
         model = BeposoftCart
-        fields = [
-            "id",
-            "product",
-            "variant",
-            "size",
-            "discount",
-            "quantity",
-            "created_at",
-            "name",
-            "images",
-            "price",
-            "note",
-            "tax",
-            "rate",
-            "exclude_price"
-        ]
-
+        fields = "__all__"
+        
     def get_name(self, obj):
         # Check if the product is a single or variant type
         if obj.product.type == "single":
