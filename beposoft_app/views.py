@@ -959,7 +959,7 @@ class VariantProductCreate(BaseTokenView):
             # Get request data
             product_id = request.data.get("product")
             attributes = request.data.get("attributes", "[]")
-            groupid = request.data.get("groupid")
+            groupid = 256314
 
             try:
                 attributes = json.loads(attributes) 
@@ -1002,12 +1002,13 @@ class VariantProductCreate(BaseTokenView):
                     color = None
                     size = None
 
-                    # Assign attribute values to the appropriate columns
-                    for attr_name, value in combined_attr.items():
-                        if attr_name.lower() == "color":
-                            color = value
-                        elif attr_name.lower() == "size":
-                            size = value
+                    # The first attribute value will be assigned to color, and the second to size
+                    # Assign the first value to color
+                    if combined_attr:
+                        color = combination[0]  # First attribute value for color
+                    # Assign the second value to size
+                    if len(combination) > 1:
+                        size = combination[1]  # Second attribute value for size
 
                     # Create the variant product with the same family
                     variant_product = Products.objects.create(
@@ -1042,6 +1043,7 @@ class VariantProductCreate(BaseTokenView):
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}", exc_info=True)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 

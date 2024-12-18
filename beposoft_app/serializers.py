@@ -151,7 +151,7 @@ class ProductsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Products
-        fields = ['id', 'name', 'hsn_code', 'family', 'type', 'unit', 'purchase_rate', 'tax', 'selling_price', 'stock', 'image']
+        fields = "__all__"
 
 
 
