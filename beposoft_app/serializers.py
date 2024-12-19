@@ -241,21 +241,22 @@ class ProductSerializerView(serializers.ModelSerializer):
             variant_list = []
 
             for variant in variants:
-                # Make sure the attribute you're checking exists in your model or adjust accordingly
-                # Assuming you're using 'name' or any other attribute instead of 'attribute'
                 if variant.name not in seen_attributes:
                     seen_attributes.add(variant.name)
+                    
+                    # Fetch all images related to the current variant
+                    variant_images = SingleProducts.objects.filter(product=variant.pk).values_list('image', flat=True)
+                    
                     variant_list.append({
                         "id": variant.pk,
                         "groupID": variant.groupID,
                         "name": variant.name,
-                        "image": variant.image.url if variant.image else None,  
-                        "price": variant.selling_price ,
-                        "color":variant.color if variant.color else None,
+                        "images": list(variant_images),  # Include all related image URLs
+                        "price": variant.selling_price,
+                        "color": variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
                         "stock": variant.stock,
-                        "created_user":variant.created_user.name
-                        
+                        "created_user": variant.created_user.name
                     })
 
             return variant_list

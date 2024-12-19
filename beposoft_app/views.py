@@ -600,7 +600,7 @@ class SingleProductImageCreateView(BaseTokenView):
                     saved_images.append(single_product)
             elif product.type == "variant":
                 # Add images to all products with the same group_id and color
-                products_to_update = Products.objects.filter(group_id=product.groupID, color=product.color)
+                products_to_update = Products.objects.filter(groupID=product.groupID, color=product.color)
                 for prod in products_to_update:
                     for image in images:
                         variant_product = SingleProducts.objects.create(product=prod, created_user=authUser, image=image)
@@ -608,7 +608,7 @@ class SingleProductImageCreateView(BaseTokenView):
 
             return Response({
                 "message": f"{len(saved_images)} images added successfully",
-                "saved_images": [img.id for img in saved_images]  # Return IDs of saved images
+                "saved_images": [img.id for img in saved_images]  # Return IDs of saved imagessssss
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -627,7 +627,7 @@ class SingleProductImageView(BaseTokenView):
             if error_response:
                 return error_response
             
-            image = SingleProducts.objects.get(pk=pk)
+            image = get_object_or_404(SingleProducts,pk=pk)
             image.delete()
             return Response({"message":"Image deleted successfuly completed"},status=status.HTTP_200_OK)
         
