@@ -182,6 +182,7 @@ class FamilySerializer(serializers.ModelSerializer):
     
 class ProductSingleviewSerializres(serializers.ModelSerializer):
     variantIDs = serializers.SerializerMethodField()
+    images = SingleProductSerializer(read_only=True,many=True)
 
     class Meta:
         model = Products
@@ -201,7 +202,6 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
             variant_list = []
 
             for variant in variants:
-                # Avoid duplicate products based on their attributes (you can use other fields as well)
                 if variant.name not in seen_attributes:
                     seen_attributes.add(variant.name)
                     variant_list.append({
@@ -222,6 +222,7 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
 
 class ProductSerializerView(serializers.ModelSerializer):
     variantIDs = serializers.SerializerMethodField()
+    images = SingleProductSerializer(read_only=True,many=True)
 
     class Meta:
         model = Products
