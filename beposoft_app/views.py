@@ -594,12 +594,10 @@ class SingleProductImageCreateView(BaseTokenView):
             saved_images = []
 
             if product.type == "single":
-                # Add images to the single product
                 for image in images:
                     single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
                     saved_images.append(single_product)
             elif product.type == "variant":
-                # Add images to all products with the same group_id and color
                 products_to_update = Products.objects.filter(groupID=product.groupID, color=product.color)
                 for prod in products_to_update:
                     for image in images:
@@ -608,7 +606,7 @@ class SingleProductImageCreateView(BaseTokenView):
 
             return Response({
                 "message": f"{len(saved_images)} images added successfully",
-                "saved_images": [img.id for img in saved_images]  # Return IDs of saved imagessssss
+                "saved_images": [img.id for img in saved_images]  ##d d dd
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
