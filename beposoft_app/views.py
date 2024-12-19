@@ -576,36 +576,47 @@ class ProductUpdateView(BaseTokenView):
 
 
 
-class SingleProductImageCreateview(BaseTokenView):
+class SingleProductImageCreateView(BaseTokenView):
     def post(self, request, pk):
         try:
             # Get authenticated user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            
-            # Get the product
-            product = Products.objects.get(pk=pk)
 
-            # Get the list of images from the request
+            # Get the product
+            product = get_object_or_404(Products, pk=pk)
+
             images = request.FILES.getlist('images')
             if not images:
                 return Response({"message": "No images were uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Process and save all images
-            saved_images = []  # For tracking the saved images
-            for image in images:
-                single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
-                saved_images.append(single_product)
+            saved_images = []
 
-            # If all images are processed, return a success message
+            if product.type == "single":
+                # Add images to the single product
+                for image in images:
+                    single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
+                    saved_images.append(single_product)
+            elif product.type == "variant":
+                # Add images to all products with the same group_id and color
+                products_to_update = Products.objects.filter(group_id=product.groupID, color=product.color)
+                for prod in products_to_update:
+                    for image in images:
+                        variant_product = SingleProducts.objects.create(product=prod, created_user=authUser, image=image)
+                        saved_images.append(variant_product)
+
             return Response({
                 "message": f"{len(saved_images)} images added successfully",
                 "saved_images": [img.id for img in saved_images]  # Return IDs of saved images
             }, status=status.HTTP_201_CREATED)
-        
+
         except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "status": "error",
+                "message": "An error occurred",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             
 

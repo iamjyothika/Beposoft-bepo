@@ -40,7 +40,7 @@ urlpatterns = [
     
     
     path ('api/image/delete/<int:pk>/',SingleProductImageView.as_view(),name="image-delete"),  # completed
-    path('api/image/add/<int:pk>/',SingleProductImageCreateview.as_view(),name="images-add"),  # completed
+    path('api/image/add/<int:pk>/',SingleProductImageCreateView.as_view(),name="images-add"),  # completed
 
 
     path('api/add/state/',StateCreateView.as_view(),name="add-state"),  # completed
