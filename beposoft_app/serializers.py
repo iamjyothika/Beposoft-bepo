@@ -230,34 +230,28 @@ class ProductSerializerView(serializers.ModelSerializer):
     
     def get_variantIDs(self, obj):
         """
-        If the product is a variant, return all variantIDs for the same groupID,
-        ensuring no duplicate attributes.
+        Fetch variant details for the same groupID, including images.
         """
-        if obj.type == 'variant':  # Ensure you're using the correct value for 'variant'
+        if obj.type == 'variant':  # Ensure correct check for 'variant'
             variants = Products.objects.filter(groupID=obj.groupID)
-            
-            # Track unique attributes to avoid duplicates
-            seen_attributes = set()
             variant_list = []
 
             for variant in variants:
-                if variant.name not in seen_attributes:
-                    seen_attributes.add(variant.name)
-                    
-                    # Fetch all images related to the current variant
-                    variant_images = SingleProducts.objects.filter(product=variant.pk).values_list('image', flat=True)
-                    
-                    variant_list.append({
-                        "id": variant.pk,
-                        "groupID": variant.groupID,
-                        "name": variant.name,
-                        "images": list(variant_images),  # Include all related image URLs
-                        "price": variant.selling_price,
-                        "color": variant.color if variant.color else None,
-                        "size": variant.size if variant.size else None,
-                        "stock": variant.stock,
-                        "created_user": variant.created_user.name
-                    })
+                # Fetch images for each variant
+                variant_images = SingleProducts.objects.filter(product=variant.pk)
+                image_urls = [img.image.url for img in variant_images if img.image]
+
+                variant_list.append({
+                    "id": variant.pk,
+                    "groupID": variant.groupID,
+                    "name": variant.name,
+                    "image": image_urls[0] if image_urls else None,  # Use the first image or None
+                    "price": variant.selling_price,
+                    "color": variant.color if variant.color else None,
+                    "size": variant.size if variant.size else None,
+                    "stock": variant.stock,
+                    "created_user": variant.created_user.name,
+                })
 
             return variant_list
         return []
