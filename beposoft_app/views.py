@@ -189,7 +189,7 @@ class CreateUserView(BaseTokenView):
                     status=status.HTTP_201_CREATED
                 )
 
-            # Handle validation errors
+            logger.info("Validation failed: %s", serializer.errors)
             return Response(
                 {
                     "status": "error",
