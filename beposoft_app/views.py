@@ -161,24 +161,53 @@ class UserProfileData(BaseTokenView):
 class CreateUserView(BaseTokenView):
     def post(self, request):
         try:
+            # Validate user from token
             user, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            
-        
-            allocated_states = request.data.get('allocated_states', [])
 
-            serializer = UserSerializer(data=request.data, many=True)
+
+            # Validate and process allocated_states
+            allocated_states = request.data.get('allocated_states')
+            
+            # Save user data
+            serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save()
-                return Response({"data": serializer.data, "message": "User created successfully"}, status=status.HTTP_201_CREATED)
-        
-            return Response({"status": "error", "message": "Validation failed","errors": serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
+                user_instance = serializer.save()
+
+                # Handle allocated_states if present
+                if allocated_states:
+                    valid_states = State.objects.filter(pk__in=allocated_states)
+                    user_instance.allocated_states.set(valid_states)
+                    user_instance.save()
+
+                return Response(
+                    {
+                        "data": serializer.data,
+                        "message": "User created successfully"
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+
+            # Handle validation errors
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Validation failed",
+                    "errors": serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         except Exception as e:
-         
-            return Response({ "status": "error", "message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            return Response(
+                {
+                    "status": "error",
+                    "message": "An error occurred",
+                    "errors": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class Users(BaseTokenView):
