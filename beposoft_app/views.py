@@ -2277,7 +2277,7 @@ class SalesReportView(BaseTokenView):
                 rejected_amount = rejected_bills.aggregate(total=Sum('total_amount'))['total'] or 0
 
                 # Order details for the current date
-                order_details = daily_orders.values('id','invoice', 'order_date', 'status', 'total_amount', 'customer__name', 'manage_staff__name','company__name','state__name')
+                order_details = daily_orders.values('id','invoice', 'order_date', 'status', 'total_amount', 'customer__name', 'manage_staff__name','company__name','state__name','family__name')
 
                 report_data.append({
                     "date": date,
@@ -2340,7 +2340,8 @@ class InvoiceReportView(BaseTokenView):
                         'customer': order.customer.name if order.customer else None,  # Assuming customer is a related field
                         'state':order.state.name if order.state else None ,
                         'total_amount': order.total_amount,
-                        'order_date': order.order_date
+                        'order_date': order.order_date,
+                        'family_name':order.family.name
                     })
 
                 staff_info.append({
