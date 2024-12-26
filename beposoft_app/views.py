@@ -175,7 +175,6 @@ class CreateUserView(BaseTokenView):
             if serializer.is_valid():
                 user_instance = serializer.save()
 
-                # Handle allocated_states if present
                 if allocated_states:
                     valid_states = State.objects.filter(pk__in=allocated_states)
                     user_instance.allocated_states.set(valid_states)
@@ -188,16 +187,8 @@ class CreateUserView(BaseTokenView):
                     },
                     status=status.HTTP_201_CREATED
                 )
-
-            logger.info("Validation failed: %s", serializer.errors)
-            return Response(
-                {
-                    "status": "error",
-                    "message": "Validation failed",
-                    "errors": serializer.errors
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                
+            return Response({"status": "error","message": "Validation failed","errors": serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response(
@@ -257,29 +248,37 @@ class UserDataUpdate(BaseTokenView):
 
     def put(self, request, pk):
         try:
+            # Authenticate the user using a token
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
 
+            # Retrieve the user object to be updated
             user = self.get_user(pk)
-            
-            allocated_states = request.data.getlist('allocated_states', [])
-          
-            
-            # If the password is provided, hash it
+
+            # If the password is provided in the request, hash it
             if 'password' in request.data:
                 request.data['password'] = make_password(request.data['password'])
-                
-            serializer = UserUpdateSerilizers(user, data=request.data)
+
+            # Use partial=True to allow partial updates
+            serializer = UserUpdateSerilizers(user, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response({"message": "User updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
-          
-            return Response({"status": "error", "message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"message": "User updated successfully", "data": serializer.data},
+                    status=status.HTTP_200_OK
+                )
+
+            return Response(
+                {"status": "error", "message": "Validation error", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            return Response(
+                {"status": "error", "message": "An error occurred", "errors": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
@@ -460,32 +459,38 @@ class FamilyUpdateView(BaseTokenView):
 
 
 class ProductCreateView(BaseTokenView):
+    @transaction.atomic
     def post(self, request):
         try:
+            # Authenticate user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
 
-            family_ids = request.data.get('family')  
-
+            # Extract and validate family IDs
+            family_ids = request.data.get('family')
             if not family_ids:
                 return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
             families = Family.objects.filter(pk__in=family_ids)
+            if families.count() != len(family_ids):
+                invalid_ids = set(family_ids) - set(families.values_list('id', flat=True))
+                return Response({"message": "Invalid family IDs", "invalid_ids": list(invalid_ids)}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not families.exists():
-                return Response({"message": "No valid family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+            # Add created_user to request data
+            request.data['created_user'] = authUser.pk
 
+            # Validate and save product
             serializer = ProductsSerializer(data=request.data)
-            
             if serializer.is_valid():
                 product = serializer.save()
-
-                product.family.set(families)  
-                
+                product.family.set(families)  # Associate families with product
                 return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+            
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+        except KeyError as e:
+            return Response({"message": f"Missing required field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

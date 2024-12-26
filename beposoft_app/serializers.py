@@ -207,7 +207,7 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                     variant_list.append({
                         "id": variant.pk,
                         "groupID": variant.groupID,
-                        "name": variant.name,  # Adjust field as needed
+                        "name": variant.name if variant.name else None,  
                         "stock": variant.stock,
                         "image": variant.image.url if variant.image else None,  # Image URL handling
                         "color":variant.color if variant.color else None,
