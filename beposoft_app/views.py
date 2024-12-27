@@ -628,17 +628,10 @@ class SingleProductImageCreateView(BaseTokenView):
 
             saved_images = []
 
-            if product.type == "single":
-                for image in images:
-                    single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
-                    saved_images.append(single_product)
-            elif product.type == "variant":
-                products_to_update = Products.objects.filter(groupID=product.groupID, color=product.color)
-                for prod in products_to_update:
-                    for image in images:
-                        variant_product = SingleProducts.objects.create(product=prod, created_user=authUser, image=image)
-                        saved_images.append(variant_product)
-
+            for image in images:
+                single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
+                saved_images.append(single_product)
+                
             return Response({
                 "message": f"{len(saved_images)} images added successfully",
                 "saved_images": [img.id for img in saved_images]  ##d d dd
