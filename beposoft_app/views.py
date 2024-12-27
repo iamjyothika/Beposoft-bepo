@@ -636,7 +636,7 @@ class SingleProductImageCreateView(BaseTokenView):
 
             saved_images = []
 
-            # Save images for each related product
+            # Save images for each related productwdwdwdw
             for image in images:
                 for related_product in related_products:
                     single_product = SingleProducts.objects.create(
