@@ -2316,7 +2316,6 @@ class InvoiceReportView(BaseTokenView):
                     status=400
                 )
 
-
             # Filter orders for the given date
             orders = Order.objects.filter(order_date=date)
 
@@ -2329,26 +2328,29 @@ class InvoiceReportView(BaseTokenView):
                 # Fetch total orders handled by this staff
                 staff_orders = orders.filter(manage_staff=staff)
 
-
                 # Collect detailed information for all orders handled by this staff
                 staff_orders_details = []
                 for order in staff_orders:
-                    staff_orders_details.append({
-                        'invoice': order.invoice,
-                        'status': order.status,
-                        'company': order.company.name if order.company else None,  # Assuming company is a related field
-                        'customer': order.customer.name if order.customer else None,  # Assuming customer is a related field
-                        'state':order.state.name if order.state else None ,
-                        'total_amount': order.total_amount,
-                        'order_date': order.order_date,
-                        'family_name':order.family.name
-                    })
+                    try:
+                        staff_orders_details.append({
+                            'invoice': order.invoice,
+                            'status': order.status,
+                            'company': order.company.name if order.company else None,
+                            'customer': order.customer.name if order.customer else None,
+                            'state': order.state.name if order.state else None,
+                            'total_amount': order.total_amount,
+                            'order_date': order.order_date,
+                            'family_name': order.family.name if order.family else None
+                        })
+                    except AttributeError as e:
+                        print(f"Error processing order {order.pk}: {e}")
+                        raise
 
                 staff_info.append({
                     'id': staff.pk,
                     'name': staff.name,
-                    'family': staff.family.name,
-                    'orders_details': staff_orders_details  
+                    'family': staff.family.name if staff.family else None,
+                    'orders_details': staff_orders_details
                 })
 
             return Response({
@@ -2358,6 +2360,7 @@ class InvoiceReportView(BaseTokenView):
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=500)
+
 
 
         
@@ -2551,51 +2554,49 @@ class CODBillsView(BaseTokenView):
             
     
 
-class ProductSaleReportView(BaseTokenView):
+class ProductSalesReportView(APIView):
     def get(self, request):
         try:
-            # Get user from token
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
+            # Fetch all order items
+            order_items = OrderItem.objects.all()
 
-            # Filter sold-out orders with status 'Shipped' or 'Completed'
-            soldouts = OrderItem.objects.all()
+            if not order_items.exists():
+                return Response(
+                    {"error": "No records found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-            # Aggregate total sold quantity by order date and product
-            product_sales = soldouts.values('order__order_date', 'product').annotate(total_sold=Sum('quantity'))
+            # Group order items by date
+            grouped_data = {}
+            for item in order_items:
+                date = item.order.order_date
+                if date not in grouped_data:
+                    grouped_data[date] = []
 
-            response_data = []
-            for sale in product_sales:
-                try:
-                    product = Products.objects.get(id=sale['product'])
-                except Products.DoesNotExist:
-                    continue  # Skip if product is not found
+                # Serialize individual order items
+                serializer = ProductSalesReportSerializer(item)
+                grouped_data[date].append(serializer.data)
 
-                # Determine product stock based on type
-                product_stock = product.stock
-                product_title = product.name
-               
-                remaining_stock = product_stock - sale['total_sold']
+            # Format the final response
+            formatted_response = [
+                {"date": str(date), "data": data}
+                for date, data in grouped_data.items()
+            ]
 
-                # Append data to responses
-                response_data.append({
-                    "date": sale['order__order_date'],
-                    "product_title": product_title,
-                    "stock_quantity": product_stock + sale['total_sold'],
-                    "items_sold": sale['total_sold'],
-                    "remaining_stock": product_stock + sale['total_sold'] -sale['total_sold'],
-                })
-
-            return Response({"status": "success", "data": response_data}, status=200)
+            return Response(formatted_response, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return JsonResponse(
-                {"status": "error", "message": str(e)},
-                status=500
+            # Handle unexpected errors
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+        
         
 
+
+        
 
 
 class StatewiseSalesReport(APIView):

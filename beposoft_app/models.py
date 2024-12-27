@@ -470,6 +470,9 @@ class PerfomaInvoiceOrder(models.Model):
         ('COD', 'COD'),
         ('credit', 'credit'),
     ], default='payed')
+    
+    
+    
     status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),

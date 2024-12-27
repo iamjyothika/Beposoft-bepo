@@ -137,7 +137,7 @@ urlpatterns = [
     path('api/stateorder/detail/<int:state_id>/',StateOrderDetailsView.as_view()),
 
     path('api/deliverylist/report/<str:date>/',DeliveryListView.as_view()),
-    path('api/sold/products/',ProductSaleReportView.as_view()),
+    path('api/sold/products/',ProductSalesReportView.as_view()),
     
     
     

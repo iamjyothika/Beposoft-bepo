@@ -724,3 +724,32 @@ class ParcalSerializers(serializers.ModelSerializer):
     class Meta:
         model = ParcalService
         fields = "__all__"
+        
+        
+        
+class ProductSalesReportSerializer(serializers.ModelSerializer):
+    order = serializers.CharField(source="order.invoice")
+    product = serializers.CharField(source="product.name")
+    total_sold = serializers.SerializerMethodField()
+    remaining_stock = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+    manage_staff = serializers.CharField(source="order.manage_staff.name")
+
+    class Meta:
+        model = OrderItem
+        fields = ["order", "product", "total_sold", "remaining_stock", "total_amount","manage_staff"]
+
+    def get_total_sold(self, obj):
+        # Assuming `quantity` is the sold quantity
+        return obj.quantity
+
+    def get_remaining_stock(self, obj):
+        # Calculate remaining stock using the Product model
+        total_sold = OrderItem.objects.filter(product=obj.product).aggregate(
+            total_sold=Sum('quantity')
+        )['total_sold'] or 0
+        return obj.product.stock - total_sold
+
+    def get_total_amount(self, obj):
+        # Assuming the `price` field exists on the OrderItem model
+        return obj.quantity * obj.rate
