@@ -20,6 +20,7 @@ from django.db.models import Sum
 from django.http import JsonResponse
 from django.utils.dateparse import parse_date
 from django.db.models import Count, Q
+from collections import defaultdict
 
 
 class UserRegistrationAPIView(APIView):
@@ -2557,8 +2558,8 @@ class CODBillsView(BaseTokenView):
 class ProductSalesReportView(APIView):
     def get(self, request):
         try:
-            # Fetch all order items
-            order_items = OrderItem.objects.all()
+            # Fetch all order items with related product and order details
+            order_items = OrderItem.objects.select_related('product', 'order').all()
 
             if not order_items.exists():
                 return Response(
@@ -2566,27 +2567,41 @@ class ProductSalesReportView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Group order items by date
-            grouped_data = {}
+            # Group order items by date and product
+            grouped_data = defaultdict(lambda: defaultdict(list))
+
             for item in order_items:
+                # Parse `order_date`
                 date = item.order.order_date
-                if date not in grouped_data:
-                    grouped_data[date] = []
+                formatted_date = (
+                    date if isinstance(date, str) else date.strftime('%Y-%m-%d')
+                )
+
+                product_name = item.product.name
 
                 # Serialize individual order items
                 serializer = ProductSalesReportSerializer(item)
-                grouped_data[date].append(serializer.data)
+                grouped_data[formatted_date][product_name].append(serializer.data)
+
+            # Fetch remaining stock directly from the Products model
+            product_stock = {
+                product.name: product.stock for product in Products.objects.all()
+            }
 
             # Format the final response
-            formatted_response = [
-                {"date": str(date), "data": data}
-                for date, data in grouped_data.items()
-            ]
+            formatted_response = []
+            for date, products in grouped_data.items():
+                for product, data in products.items():
+                    formatted_response.append({
+                        "date": date,
+                        "product": product,
+                        "stock": product_stock.get(product, 0),  # Attach stock from Products model
+                        "data": data
+                    })
 
             return Response(formatted_response, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Handle unexpected errors
             return Response(
                 {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
