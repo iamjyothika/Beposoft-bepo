@@ -619,22 +619,39 @@ class SingleProductImageCreateView(BaseTokenView):
             if error_response:
                 return error_response
 
-            # Get the product
+            # Get the main product
             product = get_object_or_404(Products, pk=pk)
 
+            # Ensure the product is a variant and has a groupId and color
+            if not hasattr(product, 'groupID') or not hasattr(product, 'color'):
+                return Response({"message": "Invalid product type or missing attributes"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get all product variants in the same group and color
+            related_products = Products.objects.filter(groupID=product.groupID, color=product.color)
+
+            # Get the uploaded images
             images = request.FILES.getlist('images')
             if not images:
                 return Response({"message": "No images were uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
             saved_images = []
 
+            # Save images for each related product
             for image in images:
-                single_product = SingleProducts.objects.create(product=product, created_user=authUser, image=image)
-                saved_images.append(single_product)
-                
+                for related_product in related_products:
+                    single_product = SingleProducts.objects.create(
+                        product=related_product,
+                        created_user=authUser,
+                        image=image
+                    )
+                    saved_images.append({
+                        "product_id": related_product.id,
+                        "image_id": single_product.id
+                    })
+
             return Response({
                 "message": f"{len(saved_images)} images added successfully",
-                "saved_images": [img.id for img in saved_images]  ##d d dd
+                "saved_images": saved_images
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -643,6 +660,7 @@ class SingleProductImageCreateView(BaseTokenView):
                 "message": "An error occurred",
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
             
 
