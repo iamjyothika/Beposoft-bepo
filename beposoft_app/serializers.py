@@ -603,6 +603,23 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
           
 
 
+class OrderModelSerilizer(serializers.ModelSerializer):
+    manage_staff = serializers.CharField(source="manage_staff.name")
+    staffID = serializers.CharField(source="manage_staff.pk")
+    family = serializers.CharField(source="family.name")
+    bank  = BankSerializer(read_only=True)
+    billing_address = ShippingAddressView(read_only=True)
+    customer = CustomerSerilizers(read_only=True)
+    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    customerID = serializers.IntegerField(source="customer.pk")
+    items = OrderItemModelSerializer(read_only = True,  many=True)
+    warehouse=WarehousedataSerializer(many=True,read_only=True)
+    company = CompanyDetailsSerializer(read_only=True)
+
+    
+    class Meta:
+        model = Order
+        fields = "__all__"
 
 
 

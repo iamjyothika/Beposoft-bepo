@@ -598,11 +598,13 @@ class ProductUpdateView(BaseTokenView):
                 return error_response
 
             product = self.get_product(pk)
+            print(request.data)
 
             serializer = ProductsSerializer(product, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"message": "Product updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
+            print(serializer.errors)
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
