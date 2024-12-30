@@ -21,6 +21,9 @@ from django.http import JsonResponse
 from django.utils.dateparse import parse_date
 from django.db.models import Count, Q
 from collections import defaultdict
+from rest_framework.parsers import MultiPartParser, FormParser
+import pandas as pd
+import os
 
 
 class UserRegistrationAPIView(APIView):
@@ -598,13 +601,11 @@ class ProductUpdateView(BaseTokenView):
                 return error_response
 
             product = self.get_product(pk)
-            print(request.data)
 
             serializer = ProductsSerializer(product, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"message": "Product updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
-            print(serializer.errors)
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -2357,7 +2358,6 @@ class InvoiceReportView(BaseTokenView):
                             'family_name': order.family.name if order.family else None
                         })
                     except AttributeError as e:
-                        print(f"Error processing order {order.pk}: {e}")
                         raise
 
                 staff_info.append({
@@ -2741,3 +2741,67 @@ class EditParcalService(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
+class ProductBulkUploadAPIView(BaseTokenView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        
+        authUser, error_response = self.get_user_from_token(request)
+        if error_response:
+            return error_response
+            
+            
+        # Check if file is provided
+        if 'file' not in request.FILES:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Read the file based on its type (CSV or Excel)
+        excel_file = request.FILES['file']
+        try:
+            file_extension = os.path.splitext(excel_file.name)[1].lower()
+            
+            if file_extension == '.csv':
+                df = pd.read_csv(excel_file)  # Handle CSV files
+            elif file_extension in ['.xlsx', '.xls']:
+                df = pd.read_excel(excel_file, engine='openpyxl')  # Handle Excel files
+            else:
+                return Response({"error": "Unsupported file format. Please upload a CSV or Excel file."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure the expected columns are in the file
+        required_columns = ['name', 'hsn_code', 'purchase_rate', 'selling_price', 'stock', 'tax', 'family', 'unit']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Process and save the data to the database
+        products_data = []
+        for _, row in df.iterrows():
+            try:
+                # Retrieve or create the family objects
+                family_names = row['family'].split(',')
+                families = Family.objects.filter(name__in=family_names)
+
+                # Create product instance
+                product = Products(
+                    name=row['name'],
+                    hsn_code=row['hsn_code'],
+                    purchase_rate=row['purchase_rate'],
+                    selling_price=row['selling_price'],
+                    stock=row['stock'],
+                    tax=row['tax'],
+                    unit=row['unit'],
+                    created_user= authUser  
+                )
+                product.save()  # Save product
+
+                # Set families (if ManyToManyField)
+                if product.family:
+                    product.family.set(families)
+
+                products_data.append(product.pk)  # Add the product id to the list
+            except Exception as e:
+                return Response({"error": f"Error saving product: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Products successfully uploaded", "products": products_data}, status=status.HTTP_201_CREATED)
