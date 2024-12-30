@@ -2470,69 +2470,52 @@ class CODSalesReportView(BaseTokenView):
     
     def get(self, request):
         try:
-                   
-            
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
-                return error_response
-            # Fetch all orders with 'credit' payment status
+                return error_response  
             orders = Order.objects.filter(payment_status="COD")
             
-            # Count the total number of orders
-            bills = orders.count()
-
-            # Initialize a dictionary to store total amount per unique order date
-            total_by_date = {}
-
-            # Loop through the orders to accumulate total amounts by order date
+            grouped_orders = defaultdict(list)
             for order in orders:
-                order_date = order.order_date
-                
-                # If the order date is not already in the dictionary, initialize it
-                if order_date not in total_by_date:
-                    total_by_date[order_date] = {
-                        'total_amount': 0, 
-                        'total_orders': 0, 
-                        'total_paid': 0, 
-                        'total_pending': 0
-                    }
-
-                # Accumulate the total amount and total orders
-                total_by_date[order_date]['total_amount'] += order.total_amount
-                total_by_date[order_date]['total_orders'] += 1
-
-                # Get the paid amount from PaymentReceipt (sum of the amount field)
-                paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(total_paid=Sum('amount'))['total_paid']
-                
-                # If no payment receipts, set the paid amount to 0
-                paid_amount = paid_amount if paid_amount is not None else 0
-                
-                # Accumulate the paid amount
-                total_by_date[order_date]['total_paid'] += paid_amount
-
-                # Calculate pending amount (total_amount - total_paid)
-                pending_amount = order.total_amount - paid_amount
-                total_by_date[order_date]['total_pending'] += pending_amount
-
+                grouped_orders[order.order_date].append(order)
+            
             # Prepare the response data
-            response_data = [
-                {
-                "date": date,
-                    "total_amount": data['total_amount'],
-                    "total_orders": data['total_orders'],
-                    "total_paid": data['total_paid'],
-                    "total_pending": data['total_pending']
-                }
-                for date, data in total_by_date.items()
-
+            response_data = []
+            for date, orders_list in grouped_orders.items():
+                date_data = []
+                for order in orders_list:
+                    # Get total paid amount for the current order
+                    total_paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(
+                        total_paid=Sum('amount')
+                    )['total_paid'] or 0.0  # Default to 0 if no payments exist
+                    
+                    # Convert total_paid_amount to float if it's a string
+                    total_paid_amount = float(total_paid_amount)
+                    
+                    # Calculate the balance amount (order_total_amount - total_paid_amount)
+                    order_total_amount = float(order.total_amount)  # Assuming 'total_amount' is a field on the Order model
+                    balance_amount = order_total_amount - total_paid_amount
+                    
+                    # Serialize the order and add total paid and balance amount
+                    serializer = OrderDetailSerializer(order)
+                    order_data = serializer.data
+                    order_data['total_paid_amount'] = total_paid_amount
+                    order_data['balance_amount'] = balance_amount
+                    
+                    date_data.append(order_data)
                 
-            ]
-
-            # Return the response with the order summary
+                response_data.append({
+                    "date": date,
+                    "orders": date_data
+                })
+            
             return Response(response_data, status=status.HTTP_200_OK)
-
+        
+        except Order.DoesNotExist:
+            return Response({"error": "No orders found with 'credit' payment status."}, status=status.HTTP_404_NOT_FOUND)
+        
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         
 
 
