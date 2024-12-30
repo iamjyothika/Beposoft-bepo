@@ -572,12 +572,13 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.name', read_only=True)  
     staff_name = serializers.CharField(source='manage_staff.name', read_only=True) 
     family_name=serializers.CharField(source='family.name',read_only=True)
-    warehouse_orders=WarehouseSerializer(many=True,read_only=True)
+    warehouse=WarehouseSerializer(many=True,read_only=True)
+    state = serializers.CharField(source='state.name', read_only=True) 
 
     
     class Meta:
         model = Order
-        fields = ['invoice', 'customer_name', 'staff_name', 'total_amount', 'order_date','family_name','warehouse_orders']
+        fields = "__all__"
 
 class PaymentReceiptSerializer(serializers.ModelSerializer):
     class Meta:
