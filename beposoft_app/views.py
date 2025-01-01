@@ -2770,7 +2770,7 @@ class ProductBulkUploadAPIView(BaseTokenView):
             return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Ensure the expected columns are in the file
-        required_columns = ['name', 'hsn_code', 'purchase_rate', 'selling_price', 'stock', 'tax', 'family', 'unit']
+        required_columns = ['name', 'hsn_code', 'purchase_rate', 'selling_price', 'stock', 'tax', 'family', 'unit','groupID','type']
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -2792,6 +2792,8 @@ class ProductBulkUploadAPIView(BaseTokenView):
                     stock=row['stock'],
                     tax=row['tax'],
                     unit=row['unit'],
+                    groupID = row['groupID']
+                    type = row['type']
                     created_user= authUser  
                 )
                 product.save()  # Save product
@@ -2805,3 +2807,34 @@ class ProductBulkUploadAPIView(BaseTokenView):
                 return Response({"error": f"Error saving product: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Products successfully uploaded", "products": products_data}, status=status.HTTP_201_CREATED)
+    
+    
+    
+class ProductStockReportView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            products = Products.objects.all()
+
+            seen_group_ids = set()
+            unique_products = []
+
+            for product in products:
+                if product.groupID not in seen_group_ids:
+                    seen_group_ids.add(product.groupID)
+                    unique_products.append(product)
+
+            serializer = ProductStockviewSerializres(unique_products, many=True)
+
+            return Response({"message": "Product list successfully retrieved","data": serializer.data}, status=status.HTTP_200_OK)
+
+        except authUser.DoesNotExist:
+            return Response({"status": "error","message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"status": "error","message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
