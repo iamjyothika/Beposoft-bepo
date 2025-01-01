@@ -2792,7 +2792,7 @@ class ProductBulkUploadAPIView(BaseTokenView):
                     stock=row['stock'],
                     tax=row['tax'],
                     unit=row['unit'],
-                    groupID = row['groupID'].
+                    groupID = row['groupID'],
                     type = row['type'],
                     created_user= authUser  
                 )
