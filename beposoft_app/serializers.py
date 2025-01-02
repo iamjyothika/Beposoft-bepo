@@ -484,7 +484,7 @@ class BepocartSerializersView(serializers.ModelSerializer):
     tax = serializers.CharField(source="product.tax")
     price = serializers.CharField(source="product.selling_price")
     exclude_price = serializers.CharField(source="product.exclude_price")
-    image = serializers.CharField(source="product.image")
+    image = serializers.ImageField(source="product.image")
     class Meta:
         model = BeposoftCart
         fields = "__all__"
