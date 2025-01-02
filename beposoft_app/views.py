@@ -1208,7 +1208,6 @@ class CreateOrder(BaseTokenView):
                 OrderItem.objects.create(
                     order=order,
                     product=product,
-                    variant=item_data.variant,
                     size=item_data.size if item_data.size else None,
                     quantity=int(quantity),
                     discount=discount,
