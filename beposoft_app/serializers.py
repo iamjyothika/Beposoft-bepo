@@ -612,6 +612,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     warehouse=WarehousedataSerializer(many=True,read_only=True)
     company = CompanyDetailsSerializer(read_only=True)
     recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
+    state = serializers.CharField(source="state.name")
 
     
     class Meta:
