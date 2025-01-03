@@ -2400,41 +2400,30 @@ class CreditSalesReportView(BaseTokenView):
             if error_response:
                 return error_response  
             
-            # Fetch all orders with payment status "credit"
             orders = Order.objects.filter(payment_status="credit")
             
-            # Group orders by the 'order_date'
             grouped_orders = defaultdict(list)
             for order in orders:
                 grouped_orders[order.order_date].append(order)
             
-            # Prepare the response data
             response_data = []
             for date, orders_list in grouped_orders.items():
-                # Prepare the list of orders with their total paid amount and balance
                 date_data = []
                 for order in orders_list:
-                    # Get total paid amount for the current order
                     total_paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(
                         total_paid=Sum('amount')
-                    )['total_paid'] or 0.0  # Default to 0 if no payments exist
+                    )['total_paid'] or 0.0  
                     
-                    # Convert total_paid_amount to float if it's a string
                     total_paid_amount = float(total_paid_amount)
                     
-                    # Calculate the balance amount (order_total_amount - total_paid_amount)
-                    order_total_amount = float(order.total_amount)  # Assuming 'total_amount' is a field on the Order model
+                    order_total_amount = float(order.total_amount)  
                     balance_amount = order_total_amount - total_paid_amount
                     
-                    # Serialize the order and add total paid and balance amount
                     serializer = OrderDetailSerializer(order)
                     order_data = serializer.data
-                    order_data['total_paid_amount'] = total_paid_amount
-                    order_data['balance_amount'] = balance_amount
                     
                     date_data.append(order_data)
                 
-                # Add the date and the orders for that date
                 response_data.append({
                     "date": date,
                     "orders": date_data

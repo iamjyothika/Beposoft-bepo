@@ -420,7 +420,7 @@ class BeposoftCart(models.Model):
     
     
 class PaymentReceipt(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payment_receipts')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='recived_payment')
     customer = models.ForeignKey(Customers,on_delete=models.CASCADE,null=True)
     payment_receipt = models.CharField(max_length=10, unique=True, editable=False)  # Combined ID
     amount = models.CharField(max_length=100)

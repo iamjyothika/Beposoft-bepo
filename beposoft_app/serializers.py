@@ -568,6 +568,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     family_name=serializers.CharField(source='family.name',read_only=True)
     warehouse=WarehouseSerializer(many=True,read_only=True)
     state = serializers.CharField(source='state.name', read_only=True) 
+    recived_payment = PaymentRecieptSerializers(many=True,read_only=True)
 
     
     class Meta:
