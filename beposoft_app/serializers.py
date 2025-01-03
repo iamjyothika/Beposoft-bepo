@@ -436,11 +436,11 @@ class WarehouseUpdateSerializers(serializers.ModelSerializer):
 #         fields = "__all__"
 
 
-# class LedgerSerializers(serializers.ModelSerializer):
-#     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
-#     class Meta :
-#         model = Order
-#         fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
+class LedgerSerializers(serializers.ModelSerializer):
+    recived_payment =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+    class Meta :
+        model = Order
+        fields = ["id","invoice","company","total_amount","order_date","recived_payment"]
 
         
 
