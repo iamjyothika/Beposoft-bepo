@@ -582,18 +582,18 @@ class PaymentReceiptSerializer(serializers.ModelSerializer):
 
 
 class OrderPaymentSerializer(serializers.ModelSerializer):
-    payment_receipts = PaymentReceiptSerializer(many=True)
+    recived_payment = PaymentReceiptSerializer(many=True)
     
     # We will calculate the total paid amount by summing the amount from all related payment receipts
     total_paid = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'invoice', 'order_date', 'payment_status', 'status', 'payment_receipts', 'manage_staff', 'customer', 'total_paid']
+        fields = ['id', 'invoice', 'order_date', 'payment_status', 'status', 'recived_payment', 'manage_staff', 'customer', 'total_paid']
 
     def get_total_paid(self, obj):
         # Calculate the total paid amount from all related payment receipts for this order
-        total_paid = obj.payment_receipts.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
+        total_paid = obj.recived_payment.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
         return total_paid
 
           
