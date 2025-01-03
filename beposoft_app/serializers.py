@@ -418,29 +418,29 @@ class WarehouseUpdateSerializers(serializers.ModelSerializer):
         fields = ['parcel_service','tracking_id','shipping_charge']
         
         
-class OrderModelSerilizer(serializers.ModelSerializer):
-    manage_staff = serializers.CharField(source="manage_staff.name")
-    staffID = serializers.CharField(source="manage_staff.pk")
-    family = serializers.CharField(source="family.name")
-    bank  = BankSerializer(read_only=True)
-    billing_address = ShippingAddressView(read_only=True)
-    customer = CustomerSerilizers(read_only=True)
-    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
-    customerID = serializers.IntegerField(source="customer.pk")
-    items = OrderItemModelSerializer(read_only = True,  many=True)
-    warehouse=WarehousedataSerializer(many=True,read_only=True)
+# class OrderModelSerilizer(serializers.ModelSerializer):
+#     manage_staff = serializers.CharField(source="manage_staff.name")
+#     staffID = serializers.CharField(source="manage_staff.pk")
+#     family = serializers.CharField(source="family.name")
+#     bank  = BankSerializer(read_only=True)
+#     billing_address = ShippingAddressView(read_only=True)
+#     customer = CustomerSerilizers(read_only=True)
+#     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+#     customerID = serializers.IntegerField(source="customer.pk")
+#     items = OrderItemModelSerializer(read_only = True,  many=True)
+#     warehouse=WarehousedataSerializer(many=True,read_only=True)
 
     
-    class Meta:
-        model = Order
-        fields = "__all__"
+#     class Meta:
+#         model = Order
+#         fields = "__all__"
 
 
-class LedgerSerializers(serializers.ModelSerializer):
-    payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
-    class Meta :
-        model = Order
-        fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
+# class LedgerSerializers(serializers.ModelSerializer):
+#     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
+#     class Meta :
+#         model = Order
+#         fields = ["id","invoice","company","total_amount","order_date","payment_receipts"]
 
         
 
@@ -611,6 +611,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     items = OrderItemModelSerializer(read_only = True,  many=True)
     warehouse=WarehousedataSerializer(many=True,read_only=True)
     company = CompanyDetailsSerializer(read_only=True)
+    recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
 
     
     class Meta:
