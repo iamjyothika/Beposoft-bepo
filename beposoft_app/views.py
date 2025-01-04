@@ -2825,4 +2825,55 @@ class ProductStockReportView(BaseTokenView):
         except Exception as e:
             return Response({"status": "error","message": "An error occurred","errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+
+
+
+
+class DashboardView(APIView):
+    def get(self, request):
+        try:
+            # Authenticate user from token
+            # authUser, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
+
+            # Fetch today's orders
+            today_orders = Orders.objects.filter(created_at__date=timezone.now().date())
+
+            # Calculate total price
+            total_price = sum(order.price for order in today_orders)
+
+            # Example percentage value and badge color
+            percentage_value = 18.89  # Replace with actual calculation logic if necessary
+            badge_color = "success"  # Based on your business logic
+
+            # Example series data
+            series_data = [{
+                "name": "Job View",
+                "data": [36, 21, 65, 22, 35, 50, 87, 98],  # Replace with dynamic data if needed
+            }]
+
+            # Color options
+            color = ["--bs-success", "--bs-transparent"]
+
+            # Response structure
+            response_data = {
+                "id": 1,
+                "title": "Today Bills",
+                "price": f"{total_price:,}",  # Format with commas
+                "percentageValue": percentage_value,
+                "badgeColor": badge_color,
+                "seriesData": series_data,
+                "color": color
+            }
+
+            return Response({"message": "Data successfully retrieved", "data": response_data}, status=status.HTTP_200_OK)
+
+        except authUser.DoesNotExist:
+            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
