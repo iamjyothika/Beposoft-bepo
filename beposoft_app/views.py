@@ -1058,6 +1058,7 @@ class VariantProductCreate(BaseTokenView):
             # Get request data
             product_id = request.data.get("product")
             attributes = request.data.get("attributes", "[]")
+            print(f"Attributes  :{attributes}")
 
             try:
                 attributes = json.loads(attributes) 

@@ -458,7 +458,7 @@ class ProductsListViewSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 
-
+9
 class ProductAttributeModelSerilizer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttribute

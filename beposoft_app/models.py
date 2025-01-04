@@ -5,6 +5,7 @@ import re
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import random
+from django.utils.timezone import now 
 from datetime import datetime
 # Create your models here.
 
@@ -351,11 +352,18 @@ class Order(models.Model):
         ('Bank Transfer', 'Bank Transfer'),
         ('Cash on Delivery', 'Cash on Delivery'),
     ], default='Net Banking')
+    updated_at = models.DateTimeField(auto_now=True)  
 
     def save(self, *args, **kwargs):
         if not self.invoice:
             self.invoice = self.generate_invoice_number()
             print(f"Generated invoice number: {self.invoice}")
+            
+        if self.pk:  # Check if the object already exists
+            original = Order.objects.get(pk=self.pk)
+            if original.status != self.status:
+                self.updated_at = now()  
+                
         super().save(*args, **kwargs)
 
     def generate_invoice_number(self):
