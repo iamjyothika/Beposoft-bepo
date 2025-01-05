@@ -24,6 +24,7 @@ from collections import defaultdict
 from rest_framework.parsers import MultiPartParser, FormParser
 import pandas as pd
 import os
+from django.utils import timezone
 
 
 class UserRegistrationAPIView(APIView):
@@ -1221,7 +1222,7 @@ class CreateOrder(BaseTokenView):
             return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         except Exception as e:
-            logger.info(f"Order Creating error is   {e}")
+            print(f"Order Creating error is   {e}")
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OrderListView(BaseTokenView):
@@ -2827,52 +2828,89 @@ class ProductStockReportView(BaseTokenView):
         
 
 
-
+from django.db.models import Sum
 
 
 class DashboardView(APIView):
     def get(self, request):
         try:
-            # Authenticate user from token
-            # authUser, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
+            # Sample data setup
+            max_order = 50  # Example max order value
+            today_date = timezone.now().date()
 
-            # Fetch today's orders
-            today_orders = Orders.objects.filter(created_at__date=timezone.now().date())
+            # Fetch today's orders and calculate total price
+            today_orders = Order.objects.filter(updated_at__date=today_date).distinct()
+            total_price = today_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-            # Calculate total price
-            total_price = sum(order.price for order in today_orders)
+            # Calculate percentage of orders completed
+            order_count = today_orders.count()
+            percentage_value = (order_count / max_order * 100) if max_order > 0 else 0
 
-            # Example percentage value and badge color
-            percentage_value = 18.89  # Replace with actual calculation logic if necessary
-            badge_color = "success"  # Based on your business logic
+            # Determine badge color based on percentage
+            badge_color = (
+                "success" if percentage_value > 75
+                else "warning" if percentage_value >= 50
+                else "danger"
+            )
 
-            # Example series data
-            series_data = [{
-                "name": "Job View",
-                "data": [36, 21, 65, 22, 35, 50, 87, 98],  # Replace with dynamic data if needed
-            }]
+            # Aggregating data for seriesData
+            orders_by_date = (
+                Order.objects.values('order_date')
+                .annotate(order_count=Count('id'))
+                .order_by('order_date')
+            )
 
-            # Color options
-            color = ["--bs-success", "--bs-transparent"]
+            # Formatting the data for the response
+            series_data = [
+                {
+                    "name": "Job View",
+                    "data": [
+                        {
+                            "date": item['order_date'],
+                            "count": item['order_count']
+                        }
+                        for item in orders_by_date
+                    ]
+                }
+            ]
 
-            # Response structure
+            # Final response structure
             response_data = {
                 "id": 1,
                 "title": "Today Bills",
-                "price": f"{total_price:,}",  # Format with commas
-                "percentageValue": percentage_value,
+                "price": f"{total_price:,}",  # Format with commas for better readability
+                "percentageValue": round(percentage_value, 2),
                 "badgeColor": badge_color,
                 "seriesData": series_data,
-                "color": color
+                "color": '["--bs-success", "--bs-transparent"]'
             }
 
-            return Response({"message": "Data successfully retrieved", "data": response_data}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Data successfully retrieved", "data": response_data},
+                status=status.HTTP_200_OK
+            )
 
-        except authUser.DoesNotExist:
-            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"Error in TodayBillsView: {e}")
+            return Response(
+                {"status": "error", "message": "An error occurred", "errors": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
+
+
+
+class StaffBasedCustomers(BaseTokenView):
+    def get(self,request):
+        try :
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+        
+            customers = Customers.objects.filter(manager=authUser)
+            serializer = CustomerModelSerializerView(customers, many=True)
+            return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
+        
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
