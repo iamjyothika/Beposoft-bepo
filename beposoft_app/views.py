@@ -78,7 +78,7 @@ class UserLoginAPIView(APIView):
                         "message": "Login successful",
                         "token": token,
                         'name':customer.name,
-                        "active": customer.department_id.name
+                        "active": customer.designation
                     }, status=status.HTTP_200_OK)
                     response.set_cookie(
                         key='token',
