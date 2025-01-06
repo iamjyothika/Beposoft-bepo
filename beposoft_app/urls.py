@@ -149,7 +149,9 @@ urlpatterns = [
     path('api/parcal/service/',ParcalServiceView.as_view()),
     path('api/parcal/<int:pk>/service/',EditParcalService.as_view()),
     
-    path('api/bulk/upload/products/',ProductBulkUploadAPIView.as_view())
+    path('api/bulk/upload/products/',ProductBulkUploadAPIView.as_view()),
+    path('invoice/<int:pk>/', GenerateInvoice, name='generate_invoice'),
+    
     
     
     

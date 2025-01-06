@@ -25,6 +25,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 import pandas as pd
 import os
 from django.utils import timezone
+from django.shortcuts import render
 
 
 class UserRegistrationAPIView(APIView):
@@ -2914,4 +2915,18 @@ class StaffBasedCustomers(BaseTokenView):
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        
+
+
+def GenerateInvoice(request,pk):
+    order = Order.objects.filter(pk=pk).first()
+    items = OrderItem.objects.filter(order=order) 
+    for item in items:
+        item.final_price = item.product.selling_price - item.discount
+        item.total = item.final_price * item.quantity
+ 
+         
+    context = {
+        "items" :items,
+        "order":order
+    }
+    return render(request, 'invoice.html',context)
