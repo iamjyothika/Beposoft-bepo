@@ -150,7 +150,7 @@ class UserProfileData(BaseTokenView):
             if error_response:
                 return error_response
 
-            serializer = UserUpdateSerilizers(user)
+            serializer = UserSerializer(user)
             return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
@@ -216,7 +216,7 @@ class Users(BaseTokenView):
 
                         
             users = User.objects.all()
-            serializer = StaffSerializer(users, many=True)
+            serializer = UserUpdateSerilizers(users, many=True)
             return Response({
                 "data": serializer.data,
                 "message": "Users fetching is successfully completed"
