@@ -502,7 +502,7 @@ class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
         fields = '__all__'
         
 class PerfomaInvoiceProducts(serializers.ModelSerializer):
-    images = serializers.SerializerMethodField()
+    images =  serializers.ImageField(source="product.image")
     name = serializers.CharField(source="product.name")
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
@@ -522,13 +522,7 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
         return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
     
 
-    def get_images(self, obj):
-        image_urls = []
-
-        single_images = SingleProducts.objects.filter(product=obj.product)
-        image_urls = [single_image.image.url for single_image in single_images if single_image.image]
-
-        return image_urls if image_urls else None
+    
         
 class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
     manage_staff = serializers.CharField(source="manage_staff.name")
