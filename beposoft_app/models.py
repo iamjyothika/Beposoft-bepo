@@ -149,7 +149,7 @@ class Customers(models.Model):
     name = models.CharField(max_length=100)
     manager = models.ForeignKey(User, on_delete=models.CASCADE)
     phone = models.CharField(max_length=10,unique=True)
-    alt_phone = models.CharField(max_length=10, null=True)
+    alt_phone = models.CharField(max_length=10, null=True, blank=True)
     email = models.EmailField(max_length=100,unique=True)
     address = models.CharField(max_length=500,null=True)
     zip_code =models.IntegerField()
