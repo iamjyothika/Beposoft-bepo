@@ -155,7 +155,7 @@ class Customers(models.Model):
     zip_code =models.IntegerField()
     city = models.CharField(max_length=100)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
-    comment = models.CharField(max_length=500,null=True)
+    comment = models.CharField(max_length=500,null=True, blank=True)
     created_at = models.DateField(auto_now_add=True)
 
     def __str__(self):
