@@ -231,7 +231,28 @@ class Users(BaseTokenView):
                 "error": str(e)  
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        
+class StaffOrders(BaseTokenView):
+    def get(self, request):
+        try:
+            user, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            orders = Order.objects.filter(manage_staff=user.pk)
+
+            serialized_orders = OrderModelSerilizer(orders, many=True)
+
+            return Response({
+                "message": "Orders fetched successfully",
+                "data": serialized_orders.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "message": "An error occurred while fetching orders",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+          
 
 
 class UserDataUpdate(BaseTokenView):
