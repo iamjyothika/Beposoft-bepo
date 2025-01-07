@@ -150,7 +150,7 @@ class UserProfileData(BaseTokenView):
             if error_response:
                 return error_response
 
-            serializer = UserSerializer(user)
+            serializer = UserUpdateSerilizers(user)
             return Response({"status": "success", "data": serializer.data}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
@@ -2921,8 +2921,13 @@ def GenerateInvoice(request,pk):
     order = Order.objects.filter(pk=pk).first()
     items = OrderItem.objects.filter(order=order) 
     for item in items:
+        tax_rate = item.product.tax 
+        price_without_tax = item.product.selling_price / (1 + tax_rate / 100) if tax_rate else item.product.selling_price
+        tax_amount = item.product.selling_price - price_without_tax
         item.final_price = item.product.selling_price - item.discount
         item.total = item.final_price * item.quantity
+        item.tax_amount = tax_amount
+
  
          
     context = {

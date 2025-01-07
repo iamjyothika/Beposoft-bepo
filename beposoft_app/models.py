@@ -352,7 +352,7 @@ class Order(models.Model):
         ('Bank Transfer', 'Bank Transfer'),
         ('Cash on Delivery', 'Cash on Delivery'),
     ], default='Net Banking')
-    updated_at = models.DateTimeField(auto_now=True)  
+    updated_at = models.DateTimeField(auto_now=True) 
 
     def save(self, *args, **kwargs):
         if not self.invoice:
