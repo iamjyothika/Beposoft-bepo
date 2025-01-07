@@ -1852,8 +1852,6 @@ class CreatePerfomaInvoice(BaseTokenView):
                 PerfomaInvoiceOrderItem.objects.create(
                     order=order,
                     product=product,
-                    variant=item_data.variant,
-                    size=item_data.size,
                     quantity=int(quantity),
                     discount=discount,
                     tax=tax,
