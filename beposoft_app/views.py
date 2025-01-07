@@ -296,21 +296,10 @@ class UserCustomerAddingView(BaseTokenView):
                 return error_response
             
             
-            data = request.data
-            if isinstance(data, dict):
-                data = [data]
-            
-            if not isinstance(data, list):
-                return Response(
-                    {"status": "error", "message": "Invalid data format. Must be a dictionary or list of dictionaries."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            serializer = CustomerModelSerializer(data=data, many=True)
+            serializer = CustomerModelSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response({"data": serializer.data, "message": "Customer added successfully"}, status=status.HTTP_201_CREATED)
-           
             return Response({"status": "error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         
         except Exception as e:
