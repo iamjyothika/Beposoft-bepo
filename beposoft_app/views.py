@@ -2808,12 +2808,12 @@ class ProductBulkUploadAPIView(BaseTokenView):
     
     
     
-class ProductStockReportView(BaseTokenView):
+class ProductStockReportView(APIView):
     def get(self, request):
         try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
+            # authUser, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
 
             products = Products.objects.all()
 
@@ -2846,53 +2846,68 @@ class DashboardView(APIView):
             # Sample data setup
             max_order = 50  # Example max order value
             today_date = timezone.now().date()
+            start_of_month = today_date.replace(day=1)
 
             # Fetch today's orders and calculate total price
             today_orders = Order.objects.filter(updated_at__date=today_date).distinct()
             total_price = today_orders.aggregate(total_amount=Sum('total_amount'))['total_amount'] or 0
 
-            # Calculate percentage of orders completed
-            order_count = today_orders.count()
-            percentage_value = (order_count / max_order * 100) if max_order > 0 else 0
+            # Calculate percentage of today's orders
+            today_order_count = today_orders.count()
+            today_percentage_value = (today_order_count / max_order * 100) if max_order > 0 else 0
 
-            # Determine badge color based on percentage
-            badge_color = (
-                "success" if percentage_value > 75
-                else "warning" if percentage_value >= 50
-                else "danger"
-            )
+            # Fetch approved orders
+            approved_orders = Order.objects.filter(status="approved").distinct()
+            approved_order_count = approved_orders.count()
+            approved_percentage_value = (approved_order_count / max_order * 100) if max_order > 0 else 0
 
-            # Aggregating data for seriesData
-            orders_by_date = (
-                Order.objects.values('order_date')
-                .annotate(order_count=Count('id'))
-                .order_by('order_date')
-            )
+            # Fetch waiting for confirmation orders
+            waiting_orders = Order.objects.filter(status="waiting_for_confirmation").distinct()
+            waiting_order_count = waiting_orders.count()
+            waiting_percentage_value = (waiting_order_count / max_order * 100) if max_order > 0 else 0
 
-            # Formatting the data for the response
-            series_data = [
-                {
-                    "name": "Job View",
-                    "data": [
-                        {
-                            "date": item['order_date'],
-                            "count": item['order_count']
-                        }
-                        for item in orders_by_date
-                    ]
-                }
-            ]
+            # Fetch shipped orders
+            shipped_orders = Order.objects.filter(status="shipped").distinct()
+            shipped_order_count = shipped_orders.count()
+            shipped_percentage_value = (shipped_order_count / max_order * 100) if max_order > 0 else 0
+
+            # Fetch Proforma Invoice orders for the current month
+            proforma_invoice_orders = PerfomaInvoiceOrder.objects.filter(order_date=start_of_month).distinct()
+            proforma_invoice_order_count = proforma_invoice_orders.count()
 
             # Final response structure
-            response_data = {
-                "id": 1,
-                "title": "Today Bills",
-                "price": f"{total_price:,}",  # Format with commas for better readability
-                "percentageValue": round(percentage_value, 2),
-                "badgeColor": badge_color,
-                "seriesData": series_data,
-                "color": '["--bs-success", "--bs-transparent"]'
-            }
+            response_data = [
+                {
+                    "id": 1,
+                    "title": "Today Bills",
+                    "order": f"{today_order_count}",
+                    "percentageValue": round(today_percentage_value, 2),
+                },
+                {
+                    "id": 2,
+                    "title": "Approved Bills",
+                    "order": f"{approved_order_count}",
+                    "percentageValue": round(approved_percentage_value, 2),
+                },
+                {
+                    "id": 3,
+                    "title": "Waiting For Confirmation",
+                    "order": f"{waiting_order_count}",
+                    "percentageValue": round(waiting_percentage_value, 2),
+                },
+                {
+                    "id": 4,
+                    "title": "Shipped",
+                    "order": f"{shipped_order_count}",
+                    "percentageValue": round(shipped_percentage_value, 2),
+                },
+                {
+                    "id": 5,
+                    "title": "Proforma Invoices",
+                    "order": f"{proforma_invoice_order_count}",
+                    "percentageValue": None,  # Optional if no percentage needed
+                },
+            ]
 
             return Response(
                 {"message": "Data successfully retrieved", "data": response_data},
@@ -2900,11 +2915,15 @@ class DashboardView(APIView):
             )
 
         except Exception as e:
-            print(f"Error in TodayBillsView: {e}")
+            print(f"Error in DashboardView: {e}")
             return Response(
                 {"status": "error", "message": "An error occurred", "errors": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+
 
 
 

@@ -6,7 +6,7 @@ from .views import *
 
 urlpatterns = [
     
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('api/dashboard/', DashboardView.as_view(), name='dashboard'),
 
     path('api/register/', UserRegistrationAPIView.as_view(), name='user-registration'),
     path('api/login/', UserLoginAPIView.as_view(), name='user-login'),
@@ -144,6 +144,7 @@ urlpatterns = [
     path('api/sold/products/',ProductSalesReportView.as_view()),
     
     path('api/product/stock/report/',ProductStockReportView.as_view()),
+    # path('api/product/stock/report/',StockGroupedProductAPIView.as_view()),
     
     
     
