@@ -763,7 +763,7 @@ class ProductStockviewSerializres(serializers.ModelSerializer):
 
     class Meta:
         model = Products
-        fields = ["id", "name", "stock", "selling_price",]
+        fields = ["id", "name", "stock", "selling_price","image"]
 
 
     def get_stock(self, obj):
