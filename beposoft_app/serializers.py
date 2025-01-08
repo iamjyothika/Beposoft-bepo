@@ -759,39 +759,14 @@ class ProductSalesReportSerializer(serializers.ModelSerializer):
 
 
 class ProductStockviewSerializres(serializers.ModelSerializer):
-    variantIDs = serializers.SerializerMethodField()
-    totalStock = serializers.SerializerMethodField()
+    stock = serializers.SerializerMethodField()
 
     class Meta:
         model = Products
-        fields = ["id", "name", "stock", "variantIDs", "totalStock"]
+        fields = ["id", "name", "stock", "selling_price",]
 
-    def get_variantIDs(self, obj):
-        """
-        If the product is a variant, return all variants for the same groupID,
-        ensuring the current product is not included and preventing duplicates.
-        """
-        if obj.type == 'variant':  # Check if the product is a variant
-            # Filter products with the same groupID but exclude the current product
-            variants = Products.objects.filter(groupID=obj.groupID).exclude(id=obj.id)
 
-            # Track unique attributes to avoid duplicates
-            seen_attributes = set()
-            variant_list = []
-
-            for variant in variants:
-                if variant.name not in seen_attributes:
-                    seen_attributes.add(variant.name)
-                    variant_list.append({
-                        "id": variant.pk,
-                        "name": variant.name if variant.name else None,
-                        "stock": variant.stock,
-                    })
-
-            return variant_list
-        return []
-
-    def get_totalStock(self, obj):
+    def get_stock(self, obj):
         """
         Calculate the total stock for all products with the same groupID,
         including the current product.

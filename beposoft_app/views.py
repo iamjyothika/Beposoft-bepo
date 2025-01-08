@@ -2808,12 +2808,12 @@ class ProductBulkUploadAPIView(BaseTokenView):
     
     
     
-class ProductStockReportView(APIView):
+class ProductStockReportView(BaseTokenView):
     def get(self, request):
         try:
-            # authUser, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
             products = Products.objects.all()
 
