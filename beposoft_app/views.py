@@ -3028,3 +3028,28 @@ def GenerateInvoice(request,pk):
 
 
 
+class ManagerUnderCustomer(BaseTokenView):
+    def get(self, request):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Filter customers based on the manager's family relationship
+            customers = Customers.objects.filter(manager__family__pk=authUser.family.pk)
+
+            serializer = CustomerModelSerializerView(customers, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Customers.DoesNotExist:
+            return Response({"error": "No customers found for the given manager."}, status=404)
+
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred.", "details": str(e)}, status=500)
+
+        
+
+
+

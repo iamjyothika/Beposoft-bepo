@@ -22,8 +22,9 @@ urlpatterns = [
 
 
     path('api/add/staff/',CreateUserView.as_view(),name="add-staff"), 
-    path('api/staffs/',Users.as_view(),name="staffs"), # completed
+    path('api/staffs/',Users.as_view(),name="staffs"), # completed  ManagerUnderCustomer
     path('api/staff/orders/',StaffOrders.as_view(),name="staffs"), # completed
+    path('api/manager/customers/',ManagerUnderCustomer.as_view(),name="staffs"), # completed
     path('api/staff/update/<int:pk>/',UserDataUpdate.as_view(),name="staff-update"),
 
 
