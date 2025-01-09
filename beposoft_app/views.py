@@ -2891,42 +2891,84 @@ class DashboardView(APIView):
                     "title": "Today Bills",
                     "order": f"{today_order_count}",
                     "percentageValue": round(today_percentage_value, 2),
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Today Bills",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 2,
                     "title": "Approved Bills",
                     "order": f"{approved_order_count}",
                     "percentageValue": round(approved_percentage_value, 2),
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Approved Bills",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 3,
                     "title": "Waiting For Confirmation",
                     "order": f"{waiting_order_count}",
                     "percentageValue": round(waiting_percentage_value, 2),
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Waiting For Confirmation",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 4,
                     "title": "Shipped",
                     "order": f"{shipped_order_count}",
                     "percentageValue": round(shipped_percentage_value, 2),
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Shipped",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 5,
                     "title": "Proforma Invoices",
                     "order": f"{proforma_invoice_order_count}",
                     "percentageValue": None,  # Optional if no percentage needed
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Proforma Invoices",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 6,
                     "title": "Goods Return",
                     "order": f"{goods_count}",
                     "percentageValue": None,  # Optional if no percentage needed
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "Goods Return",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
                 {
                     "id": 7,
                     "title": "GRV waiting for confirmation",
                     "order": f"{goods_count_pending}",
                     "percentageValue": None,  # Optional if no percentage needed
+                    "badgeColor": "success",
+                    "seriesData": [{
+                        "name": "GRV waiting for confirmation",
+                        "data": [36, 21, 65, 22, 35, 50, 87, 98],
+                    }],
+                    "color": '["--bs-success", "--bs-transparent"]'
                 },
             ]
 
