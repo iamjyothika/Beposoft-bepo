@@ -329,12 +329,12 @@ class UserCustomerAddingView(BaseTokenView):
 
 
             
-class CustomerView(BaseTokenView):
+class CustomerView(APIView):
     def get(self, request):
         try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
+            # authUser, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
                 
             customers = Customers.objects.all()
             serializer = CustomerModelSerializerView(customers, many=True)
@@ -3024,3 +3024,7 @@ def GenerateInvoice(request,pk):
         "order":order
     }
     return render(request, 'invoice.html',context)
+
+
+
+

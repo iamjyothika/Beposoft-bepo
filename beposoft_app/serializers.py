@@ -140,12 +140,10 @@ class CustomerModelSerializer(serializers.ModelSerializer):
 class CustomerModelSerializerView(serializers.ModelSerializer):
     state = serializers.CharField(source='state.name', read_only=True)
     manager = serializers.CharField(source ='manager.name',read_only=True)
+    family = serializers.CharField(source ='manager.family.pk',read_only=True)
     class Meta:
         model = Customers
-        fields = [
-            'id', 'gst', 'name', 'manager', 'phone', 'alt_phone', 'email',
-            'address', 'zip_code', 'city', 'state', 'comment', 'created_at'
-        ]      
+        fields = "__all__"    
 class ProductsSerializer(serializers.ModelSerializer):
     family = serializers.PrimaryKeyRelatedField(many=True, queryset=Family.objects.all())
 
