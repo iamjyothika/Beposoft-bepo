@@ -1070,7 +1070,6 @@ class VariantProductCreate(BaseTokenView):
             # Get request data
             product_id = request.data.get("product")
             attributes = request.data.get("attributes", "[]")
-            print(f"Attributes  :{attributes}")
 
             try:
                 attributes = json.loads(attributes) 
@@ -2874,6 +2873,16 @@ class DashboardView(APIView):
             # Fetch Proforma Invoice orders for the current month
             proforma_invoice_orders = PerfomaInvoiceOrder.objects.filter(order_date=start_of_month).distinct()
             proforma_invoice_order_count = proforma_invoice_orders.count()
+            
+            # Fetch Goods Return Totoal count
+            goods_return = GRVModel.objects.all()
+            goods_count = goods_return.count()
+            
+            
+            # Fetch Goods Return  waitin for confirmation
+            goods_waiting_condirmation = GRVModel.objects.filter(status = "pending").distinct()
+            goods_count_pending = goods_waiting_condirmation.count()
+            
 
             # Final response structure
             response_data = [
@@ -2907,6 +2916,18 @@ class DashboardView(APIView):
                     "order": f"{proforma_invoice_order_count}",
                     "percentageValue": None,  # Optional if no percentage needed
                 },
+                {
+                    "id": 6,
+                    "title": "Goods Return",
+                    "order": f"{goods_count}",
+                    "percentageValue": None,  # Optional if no percentage needed
+                },
+                {
+                    "id": 7,
+                    "title": "GRV waiting for confirmation",
+                    "order": f"{goods_count_pending}",
+                    "percentageValue": None,  # Optional if no percentage needed
+                },
             ]
 
             return Response(
@@ -2915,7 +2936,6 @@ class DashboardView(APIView):
             )
 
         except Exception as e:
-            print(f"Error in DashboardView: {e}")
             return Response(
                 {"status": "error", "message": "An error occurred", "errors": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
