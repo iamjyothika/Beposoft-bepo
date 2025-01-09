@@ -144,7 +144,6 @@ urlpatterns = [
     path('api/sold/products/',ProductSalesReportView.as_view()),
     
     path('api/product/stock/report/',ProductStockReportView.as_view()),
-    # path('api/product/stock/report/',StockGroupedProductAPIView.as_view()),
     
     
     
