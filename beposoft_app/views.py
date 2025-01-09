@@ -3048,6 +3048,31 @@ class ManagerUnderCustomer(BaseTokenView):
 
         except Exception as e:
             return Response({"error": "An unexpected error occurred.", "details": str(e)}, status=500)
+        
+        
+        
+        
+class FamilyBasedOrderGetView(BaseTokenView):
+    def get(self, request):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Filter customers based on the manager's family relationship
+            customers = Order.objects.filter(family=authUser.family.pk)
+
+            serializer = OrderModelSerilizer(customers, many=True)
+
+            return Response(serializer.data, status=200)
+
+        except Customers.DoesNotExist:
+            return Response({"error": "No customers found for the given manager."}, status=404)
+
+        except Exception as e:
+            return Response({"error": "An unexpected error occurred.", "details": str(e)}, status=500)
+    
 
         
 

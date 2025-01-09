@@ -28,8 +28,9 @@ urlpatterns = [
     path('api/staff/update/<int:pk>/',UserDataUpdate.as_view(),name="staff-update"),
 
 
-    path('api/add/family/',FamilyCreatView.as_view(),name="add-family"),  # completed
+    path('api/add/family/',FamilyCreatView.as_view(),name="add-family"),  # completed 
     path('api/familys/',FamilyAllView.as_view(),name="familys"),  # completed
+    path('api/family/orders/',FamilyBasedOrderGetView.as_view(),name="familys"),  # completed
     path('api/family/update/<int:pk>/',FamilyUpdateView.as_view(),name="family-update"),  # completed
 
 
