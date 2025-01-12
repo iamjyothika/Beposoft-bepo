@@ -70,17 +70,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerilizers(serializers.ModelSerializer):
-    family_name = serializers.SerializerMethodField()
+    family_name = serializers.CharField(source='family.name', read_only=True)
     class Meta:
         model = User
         fields = "__all__"
-        extra_fields = ['family_name']  # Additional field for family name
-
-    def get_family_name(self, obj):
-        # Assuming `obj.family` is a ForeignKey to a Family model
-        if obj.family:
-            return obj.family.name  # Replace `name` with the actual field storing the family name
-        return None 
         
 
 class StaffSerializer(serializers.ModelSerializer):
