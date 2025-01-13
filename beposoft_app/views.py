@@ -210,9 +210,9 @@ class CreateUserView(BaseTokenView):
 class Users(BaseTokenView):
     def get(self, request):
         try:
-            user, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
+            # user, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
 
                         
             users = User.objects.all()
