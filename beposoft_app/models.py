@@ -612,10 +612,20 @@ class GRVModel(models.Model):
 
 
 class ExpenseModel(models.Model):
+    PURPOSE_CHOICES=[
+        ('water','Water'),
+        ('electricity','Electricity'),
+        ('salary','Salary'),
+        ('emi','EMI'),
+        ('rent','Rent'),
+        ('equipments,','Equipments'),
+        ('travel','Travel'),
+        ('others','Others'),
+    ]
     company=models.ForeignKey(Company,on_delete=models.CASCADE, related_name="company")
     payed_by=models.ForeignKey(User,on_delete=models.CASCADE, related_name="payed_by")
     bank=models.ForeignKey(Bank,on_delete=models.CASCADE,related_name="banks")
-    purpose_of_payment=models.TextField()
+    purpose_of_payment=models.CharField(max_length=100,choices=PURPOSE_CHOICES,null=True)
     amount=models.DecimalField(max_digits=10,decimal_places=2,null=True)
     expense_date=models.DateField()
     transaction_id=models.CharField(max_length=100)
