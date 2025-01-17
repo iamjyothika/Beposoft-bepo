@@ -1,4 +1,4 @@
-#!C:\Users\bepos\beposoft\beposoft\venv\scripts\python.exe
+#!C:\Users\LENOVO\Desktop\bepo-backend\beposoft\venv\Scripts\python.exe
 
 import sys
 import json

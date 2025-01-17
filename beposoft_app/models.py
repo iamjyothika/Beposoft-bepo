@@ -631,6 +631,12 @@ class ExpenseModel(models.Model):
     transaction_id=models.CharField(max_length=100)
     description=models.TextField()
     added_by=models.CharField(max_length=30,null=True)
+
+
+    class WareHouse(models.Model):
+        name=models.CharField(max_length=200)
+        location=models.CharField(max_length=200)
+       
     
     
     
