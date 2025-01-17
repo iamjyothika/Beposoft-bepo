@@ -252,8 +252,13 @@
                                                 </th>
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                     align="left">
-                                                    Rate
+                                                    Actual Price
                                                 </th>
+                                                <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
+                                                align="left">
+                                               Rate
+                                            </th>
+
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                     align="left">
                                                     Tax %
@@ -263,20 +268,23 @@
                                                     Tax Amount
                                                 </th>
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
-                                                    align="left">
-                                                    Disc
-                                                </th>
+                                                align="center">
+                                                Quantity
+                                            </th>
+                                              
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                     align="left">
                                                     Price
                                                 </th>
+                                              
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
-                                                    align="center">
-                                                    Quantity
-                                                </th>
+                                                align="center">
+                                              Discount
+                                            </th>
+
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                     align="right">
-                                                    Subtotal
+                                                    Total Amount
                                                 </th>
                                             </tr>
 
@@ -301,18 +309,23 @@
                                                 </td>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                     align="center">{{item.product.selling_price}}</td>
+                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                    align="center">{{item.product.exclude_price|floatformat:2}}</td>
+
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                 align="center">{{item.product.tax}}</td>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                 align="center">{{item.tax_amount|floatformat:2}}</td>
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
-                                                    align="center">{{item.discount}}</td>
+                                               
                                                     <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 18px; vertical-align: top; padding: 10px 0;"
                                                     align="center">
-                                                    {{ item.final_price|floatformat:2 }}
+                                                    {{ item.quantity }}
                                                 </td>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
-                                                    align="center">{{ item.quantity }}</td>
+                                                    align="center">{{ item.final_price|floatformat:2 }}</td>
+                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                    align="center">{{ item.discount|floatformat:2 }}</td>
+
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                     align="right">{{item.total|floatformat:2 }}</td>
                                             </tr>
@@ -320,8 +333,9 @@
                                             <tr>
                                                 <td height="1" colspan="9" style="border-bottom:1px solid #e4e4e4"></td>
                                             </tr>
-                                            {% endfor %}
+                                          {% endfor %}
                                         </tbody>
+                                        
                                     </table>
                                 </td>
                             </tr>
@@ -338,70 +352,92 @@
     <!-- Total -->
     <table width="100%" border="0" cellpadding="0" cellspacing="0" align="center" class="fullTable" bgcolor="#e1e1e1">
         <tbody>
+           
             <tr>
                 <td>
                     <table width="1000" border="0" cellpadding="0" cellspacing="0" align="center" class="fullTable"
                         bgcolor="#ffffff">
                         <tbody>
+                          
                             <tr>
                                 <td>
-
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" align="center" class="fullTable" bgcolor="#e1e1e1">
+        <tbody>
+           
+            <tr>
+                <td>
+                    <table width="1000" border="0" cellpadding="0" cellspacing="0" align="center" class="fullTable"
+                        bgcolor="#ffffff">
+                        <tbody>
+                          
+                            <tr>
+                                <td>
+                                    
                                     <!-- Table Total -->
                                     <table width="800" border="0" cellpadding="0" cellspacing="0" align="center"
                                         class="fullPadding">
                                         <tbody>
+                                           
                                             <tr>
                                                 <td
                                                     style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    Subtotal
+                                                 <strong> Total Amount</strong>
                                                 </td>
+                                              
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; white-space:nowrap;"
                                                     width="80">
-                                                    $329.90
+                                                <strong>{{totalamount|floatformat:2 }}</strong>
+                                                </td>
+                                              
+                                                  
+                                     
+                                            </tr>
+                                            <tr>
+                                                <td
+                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; ">
+                                                  <strong> Shipping &amp; Handling</strong>
+
+                                                </td>
+                                                <td
+                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; ">
+                                                    <strong>{{shipping_charge|floatformat:2}}</strong>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td
                                                     style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    Shipping &amp; Handling
+                                                  <strong> Grand Total</strong>
+
                                                 </td>
                                                 <td
                                                     style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    $15.00
+                                                    <strong>{{grand_total|floatformat:2}}</strong>
                                                 </td>
                                             </tr>
-                                            <tr>
-                                                <td
-                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #000; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    <strong>Grand Total (Incl.Tax)</strong>
-                                                </td>
-                                                <td
-                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #000; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    <strong>$344.90</strong>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td
-                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #b0b0b0; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    <small>TAX</small>
-                                                </td>
-                                                <td
-                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #b0b0b0; line-height: 22px; vertical-align: top; text-align:right; ">
-                                                    <small>$72.40</small>
-                                                </td>
-                                            </tr>
+                                           
+                                           
+                                           
+                                           
                                         </tbody>
+                                   
+                                      
                                     </table>
                                     <!-- /Table Total -->
-
+                                
                                 </td>
                             </tr>
+                          
                         </tbody>
                     </table>
                 </td>
             </tr>
+            
         </tbody>
     </table>
+                                    <!-- Table Total -->
+                                   
+                                   
+                         
     <!-- /Total -->
     <!-- Information -->
     <table width="100%" border="0" cellpadding="0" cellspacing="0" align="center" class="fullTable" bgcolor="#e1e1e1">

@@ -485,6 +485,7 @@ class ProductCreateView(BaseTokenView):
 
             # Extract and validate family IDs
             family_ids = request.data.get('family')
+            # print(family_ids)
             if not family_ids:
                 return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -492,6 +493,7 @@ class ProductCreateView(BaseTokenView):
             if families.count() != len(family_ids):
                 invalid_ids = set(family_ids) - set(families.values_list('id', flat=True))
                 return Response({"message": "Invalid family IDs", "invalid_ids": list(invalid_ids)}, status=status.HTTP_400_BAD_REQUEST)
+                
 
             # Add created_user to request data
             request.data['created_user'] = authUser.pk
@@ -500,8 +502,13 @@ class ProductCreateView(BaseTokenView):
             serializer = ProductsSerializer(data=request.data)
             if serializer.is_valid():
                 product = serializer.save()
-                product.family.set(families)  # Associate families with product
+                product.family.set(families) 
+                # print(serializer.data)
+                
+                 # Associate families with product
                 return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+   
+                
             
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -3009,6 +3016,7 @@ class StaffBasedCustomers(BaseTokenView):
 def GenerateInvoice(request,pk):
     order = Order.objects.filter(pk=pk).first()
     items = OrderItem.objects.filter(order=order) 
+    totalamount=0
     for item in items:
         tax_rate = item.product.tax 
         price_without_tax = item.product.selling_price / (1 + tax_rate / 100) if tax_rate else item.product.selling_price
@@ -3016,12 +3024,29 @@ def GenerateInvoice(request,pk):
         item.final_price = item.product.selling_price - item.discount
         item.total = item.final_price * item.quantity
         item.tax_amount = tax_amount
+        totalamount+= item.total
+    shipping_charge = order.shipping_charge
+    grand_total = totalamount + shipping_charge
 
- 
-         
+
+        
+
+
+        
+        # Replace with actual logic for shippi
+        
+        
+       
+
+    # Pass data to the template
     context = {
         "items" :items,
-        "order":order
+        "order":order,
+        "totalamount":totalamount,
+        "shipping_charge":order.shipping_charge,
+        "grand_total":grand_total,
+
+      
     }
     return render(request, 'invoice.html',context)
 
