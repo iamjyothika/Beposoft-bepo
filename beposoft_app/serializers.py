@@ -148,9 +148,15 @@ class CustomerModelSerializerView(serializers.ModelSerializer):
     family = serializers.CharField(source ='manager.family.pk',read_only=True)
     class Meta:
         model = Customers
-        fields = "__all__"    
+        fields = "__all__"  
+
+
+
 class ProductsSerializer(serializers.ModelSerializer):
     family = serializers.PrimaryKeyRelatedField(many=True, queryset=Family.objects.all())
+    created_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    warehouse = serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(), required=False)
+
 
     class Meta:
         model = Products
@@ -783,6 +789,9 @@ class ProductStockviewSerializres(serializers.ModelSerializer):
         total_stock = sum(product.stock for product in products_in_group)
         return total_stock
 
-    
+class WarehouseDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WareHouse
+        fields = "__all__"   
     
     

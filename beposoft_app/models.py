@@ -48,6 +48,31 @@ class Family(models.Model):
     class Meta :
         db_table = "Family"
 
+class WareHouse(models.Model):
+    name=models.CharField(max_length=200)
+    location=models.CharField(max_length=200)
+    unique_id = models.CharField(max_length=10, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.unique_id:  # Generate unique_id only if it doesn't exist
+            self.unique_id = self.generate_unique_id()
+        super().save(*args, **kwargs)
+
+    def generate_unique_id(self):
+        prefix = "WH"
+        location_code = self.location[:2].upper() if self.location else "XX"
+        while True:
+            random_number = random.randint(1000, 9999)  # Generate a 4-digit random number
+            unique_id = f"{prefix}-{location_code}-{random_number}"
+            if not WareHouse.objects.filter(unique_id=unique_id).exists():
+                return unique_id
+       
+    
+    
+    
+    
+
+
 
 
 class User(models.Model):
@@ -77,6 +102,12 @@ class User(models.Model):
     termination_date = models.DateField(null=True, blank=True)
     supervisor_id = models.ForeignKey(Supervisor, on_delete=models.CASCADE, null=True)
     department_id = models.ForeignKey(Departments, on_delete=models.CASCADE, null=True)
+    warehouse_id=models.ForeignKey(WareHouse,on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="users"
+    )
+  
     signatur_up = models.ImageField(upload_to="signature/",max_length=100,null=True)
     APPROVAL_CHOICES = [
         ('approved', 'Approved'),
@@ -237,6 +268,7 @@ class Products(models.Model):
     
     
     created_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    warehouse = models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True,blank=True,related_name="products")
     name = models.CharField(max_length=500)
     hsn_code = models.CharField(max_length=100)
     family = models.ManyToManyField(Family, related_name='familys')
@@ -632,12 +664,3 @@ class ExpenseModel(models.Model):
     description=models.TextField()
     added_by=models.CharField(max_length=30,null=True)
 
-
-    class WareHouse(models.Model):
-        name=models.CharField(max_length=200)
-        location=models.CharField(max_length=200)
-       
-    
-    
-    
-    

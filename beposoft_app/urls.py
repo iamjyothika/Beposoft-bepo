@@ -154,6 +154,15 @@ urlpatterns = [
     
     path('api/bulk/upload/products/',ProductBulkUploadAPIView.as_view()),
     path('invoice/<int:pk>/', GenerateInvoice, name='generate_invoice'),
+
+
+    path('api/warehouse/add/',WarehouseAddView.as_view()),
+    path('api/warehouse/update/<int:pk>/',WarehouseGetView.as_view()),
+    path('api/warehouse/products/<int:warehouse_id>/',ProductByWarehouseView.as_view()),
+
+
+
+
     
     
     

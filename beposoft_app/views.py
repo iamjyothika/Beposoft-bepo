@@ -175,6 +175,8 @@ class CreateUserView(BaseTokenView):
 
             # Validate and process allocated_states
             allocated_states = request.data.get('allocated_states')
+            warehouse_id = request.data.get('warehouse_id')
+
             
             # Save user data
             serializer = UserSerializer(data=request.data)
@@ -184,6 +186,20 @@ class CreateUserView(BaseTokenView):
                 if allocated_states:
                     valid_states = State.objects.filter(pk__in=allocated_states)
                     user_instance.allocated_states.set(valid_states)
+                if warehouse_id:
+                    try:
+                        warehouse = WareHouse.objects.get(pk=warehouse_id)
+                        user_instance.warehouse_id = warehouse
+                        user_instance.save()
+                    except WareHouse.DoesNotExist:
+                        return Response(
+                            {
+                                "status": "error",
+                                "message": "Invalid warehouse_id provided"
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+    
                     user_instance.save()
 
                 return Response(
@@ -222,7 +238,7 @@ class Users(BaseTokenView):
                 "message": "Users fetching is successfully completed"
             }, status=status.HTTP_200_OK)
             
-        except user.DoesNotExist:
+        except User.DoesNotExist:
             return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
             
         except Exception as e:
@@ -3097,6 +3113,101 @@ class FamilyBasedOrderGetView(BaseTokenView):
 
         except Exception as e:
             return Response({"error": "An unexpected error occurred.", "details": str(e)}, status=500)
+        
+
+class WarehouseAddView(BaseTokenView):
+    def post(self, request):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            warehouse_data=WarehouseDetailSerializer(data=request.data)
+            if warehouse_data.is_valid():
+                warehouse_data.save()
+                return Response({"message": "Warehouse added successfully"}, status=status.HTTP_201_CREATED)
+            return Response(warehouse_data.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    def get(self, request):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            warehouse = WareHouse.objects.all()
+            serializer = WarehouseDetailSerializer(warehouse, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class WarehouseGetView(BaseTokenView):
+    def put(self,request,pk):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            warehouse = WareHouse.objects.get(pk=pk)
+            serializer = WarehouseDetailSerializer(warehouse, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "Warehouse updated successfully"}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+       
+
+    def get(self,request,pk):
+        try:
+            # Retrieve the authenticated user and handle token errors
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            warehouse = WareHouse.objects.get(pk=pk)
+            serializer = WarehouseDetailSerializer(warehouse)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
+
+
+
+
+class ProductByWarehouseView(APIView):
+    def get(self, request, warehouse_id):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Check if the warehouse exists
+            warehouse = WareHouse.objects.filter(pk=warehouse_id).first()
+            if not warehouse:
+                return Response(
+                    {"message": "Warehouse not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Filter products by warehouse_id
+            products = Products.objects.filter(warehouse=warehouse)
+
+            # Serialize the products
+            serializer = ProductsSerializer(products, many=True)
+            return Response(
+                {"message": "Products retrieved successfully", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": "An error occurred", "errors": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
     
 
         
