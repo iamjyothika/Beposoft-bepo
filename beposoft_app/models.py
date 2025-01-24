@@ -277,8 +277,14 @@ class Products(models.Model):
     purchase_rate = models.FloatField()
     tax = models.FloatField() 
     image = models.ImageField(upload_to='images/', null=True)
-    exclude_price = models.FloatField(editable=False)  
-    selling_price = models.FloatField(null=True)  
+    exclude_price = models.FloatField(editable=False) 
+    selling_price=models.FloatField(default=0.0,null=True)
+    
+    landing_cost=models.FloatField(null=True)
+    retail_price=models.FloatField(null=True)
+
+   
+  
     stock = models.IntegerField(default=0)
     color = models.CharField(max_length=100, null=True, blank=True)
     size = models.CharField(max_length=100, null=True, blank=True)
@@ -288,6 +294,8 @@ class Products(models.Model):
     def generate_variant_id(self):
         """Generates a unique variantID using UUID"""
         return str(uuid.uuid4())
+    
+      
 
     def calculate_exclude_price(self):
         if self.selling_price is not None:
@@ -295,11 +303,18 @@ class Products(models.Model):
         else:
             self.exclude_price = 0
 
+   
+
     def save(self, *args, **kwargs):
+        if self.selling_price is None:
+            self.selling_price = 0.0
+       
         # Generate variantID if not already set
+       
         if not self.variantID:
             self.variantID = self.generate_variant_id()
         self.calculate_exclude_price()
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -329,6 +344,7 @@ class Bank(models.Model):
     ifsc_code = models.CharField(max_length=100)
     branch = models.CharField(max_length=100)
     open_balance = models.FloatField()
+    created_at = models.DateField(null=True, blank=True)
     class Meta:
         db_table = "Bank"
         
@@ -341,6 +357,9 @@ class Bank(models.Model):
 
 class Order(models.Model):
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
+    warehouses=models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True)
+   
+
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="companies", null=True)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
@@ -365,6 +384,7 @@ class Order(models.Model):
         ('Waiting For Confirmation','Waiting For Confirmation'),
         ('To Print','To Print'),
         ('Invoice Rejectd','Invoice Rejectd'),
+        ('Order Request by Warehouse','Order Request by Warehouse'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
@@ -412,6 +432,7 @@ class Order(models.Model):
         
         if highest_invoice:
             # Extract the numeric part of the invoice, assuming it's in the form FPN000001
+            
             last_number = highest_invoice.invoice[len(prefix):]  # Remove the prefix
             try:
                 number = int(last_number) + 1 
@@ -464,7 +485,7 @@ class PaymentReceipt(models.Model):
     customer = models.ForeignKey(Customers,on_delete=models.CASCADE,null=True)
     payment_receipt = models.CharField(max_length=10, unique=True, editable=False)  # Combined ID
     amount = models.CharField(max_length=100)
-    bank = models.ForeignKey(Bank, on_delete=models.CASCADE)
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name='payments')
     transactionID = models.CharField(max_length=50)
     received_at = models.DateField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -664,3 +685,31 @@ class ExpenseModel(models.Model):
     description=models.TextField()
     added_by=models.CharField(max_length=30,null=True)
 
+class OrderRequest(models.Model):
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="order_requests")
+    source_warehouse = models.ForeignKey(WareHouse, on_delete=models.CASCADE, related_name="source_requests")
+    target_warehouse = models.ForeignKey(WareHouse, on_delete=models.CASCADE, related_name="target_requests")
+    quantity = models.PositiveIntegerField()
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('approved', 'Approved'), ('declined', 'Declined')], default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)   
+
+    
+class Attendance(models.Model):
+    ATTENDANCE_STATUS = [
+        ('Present', 'Present'),
+        ('Absent', 'Absent'),
+        ('Half Day Leave', 'Half Day Leave')
+       
+    ]
+
+    staff = models.ForeignKey('User', on_delete=models.CASCADE, related_name="attendance_records")
+    date = models.DateField()
+    attendance_status= models.CharField(max_length=20, choices=ATTENDANCE_STATUS,default='Present')
+
+    def __str__(self):
+        return f"{self.staff.name} - {self.date} - {self.attendance_status}"     
+
+
+    

@@ -63,24 +63,40 @@ class UserLoginAPIView(APIView):
                 customer = User.objects.filter(email=email, approval_status="approved").first()
 
                 if customer and customer.check_password(password):
+                    
                     # Generate JWT token
                     expiration_time = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
+                   
                     user_token = {
                         'id': customer.pk,  # Use ID or another unique identifier
                         'email': customer.email,
                         'name':customer.name,
                         'exp': expiration_time,
-                        'iat': datetime.utcnow() 
+                        "active": customer.designation,
+                        
+                        'iat': datetime.utcnow(),
+                       
+                        
                     }
+                   
                     token = jwt.encode(user_token, settings.SECRET_KEY, algorithm='HS256')
-
-                    # Set JWT token in cookies
-                    response = Response({ "status": "success",
+                    response_data = {
+                        "status": "success",
                         "message": "Login successful",
                         "token": token,
-                        'name':customer.name,
+                        'name': customer.name,
                         "active": customer.designation
-                    }, status=status.HTTP_200_OK)
+                    }
+
+                    # Set JWT token in cookies
+                   
+                    warehouse = getattr(customer, 'warehouse_id', None)  # Assuming a OneToOneField or ForeignKey
+                    if warehouse:
+                        response_data['warehouse_id'] = warehouse.id
+
+                    # Set JWT token in cookies
+                    response = Response(response_data, status=status.HTTP_200_OK)
+
                     response.set_cookie(
                         key='token',
                         value=token,
@@ -518,15 +534,19 @@ class ProductCreateView(BaseTokenView):
             serializer = ProductsSerializer(data=request.data)
             if serializer.is_valid():
                 product = serializer.save()
-                product.family.set(families) 
-                # print(serializer.data)
+                product.family.set(families)
+
+                 
+                print(serializer.data)
                 
                  # Associate families with product
-                return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+           
+        
    
                 
             
-            return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+           
 
         except KeyError as e:
             return Response({"message": f"Missing required field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1217,7 +1237,10 @@ class CreateOrder(BaseTokenView):
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
-            order = serializer.save()  # Create order
+            order = serializer.save()
+            order.status = 'Invoice Created'
+            order.save()
+              # Create order
             
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
@@ -1291,9 +1314,12 @@ class CustomerOrderItems(BaseTokenView):
             orderItems = OrderItem.objects.filter(order=order_id)
             if not orderItems.exists():
                 return Response({"status": "error", "message": "No orders Items found"}, status=status.HTTP_404_NOT_FOUND)
-            
+            manage_staff_designation = order.manage_staff.designation
+            print('User designstion',manage_staff_designation)
             orderSerilizer = OrderModelSerilizer(order, many=False)
-            serializer = OrderItemModelSerializer(orderItems, many=True)
+            
+            serializer = OrderItemModelSerializer(orderItems, many=True, context={'manage_staff_designation': manage_staff_designation})
+
             return Response({"order":orderSerilizer.data,"items":serializer.data}, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
@@ -1543,9 +1569,15 @@ class Cart(BaseTokenView):
         except KeyError as e:
             return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def add_product_in_cart(self, product, quantity, user):
+        existing_cart_item = BeposoftCart.objects.filter(product=product, user=user).first()
+        
+        if existing_cart_item:
+            # If the product is already in the cart, return an error message
+            return Response({"status": "error", "message": "Product already exists in the cart"}, status=status.HTTP_400_BAD_REQUEST)
         BeposoftCart.objects.create(product=product, user=user, quantity=quantity)
         return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
 
@@ -1599,8 +1631,14 @@ class StaffcartStoredProductsView(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            
+            if not hasattr(authUser, 'designation') or authUser.designation is None:
+                return Response(
+                    {"status": "error", "message": "User does not have a designation"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+           
             staffItems = BeposoftCart.objects.filter(user = authUser)
+           
             serializers = BepocartSerializersView(staffItems, many=True)
             return Response({"data":serializers.data},status=status.HTTP_200_OK)
         
@@ -1920,7 +1958,7 @@ class PerfomaInvoiceDetailView(BaseTokenView):
             if not perfoma:
                 return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_204_NO_CONTENT)
             
-            serializer = PerfomaInvoiceProductsSerializers(perfoma)
+            serializer = PerfomaInvoiceProductsSerializers(perfoma,context={"manage_staff_designation": perfoma.manage_staff.designation})
             return Response(serializer.data, status=status.HTTP_200_OK)
         
         except Exception as e:
@@ -3035,11 +3073,29 @@ def GenerateInvoice(request,pk):
     totalamount=0
     for item in items:
         tax_rate = item.product.tax 
-        price_without_tax = item.product.selling_price / (1 + tax_rate / 100) if tax_rate else item.product.selling_price
-        tax_amount = item.product.selling_price - price_without_tax
-        item.final_price = item.product.selling_price - item.discount
-        item.total = item.final_price * item.quantity
-        item.tax_amount = tax_amount
+        price_without_tax = (
+    item.product.selling_price / (1 + tax_rate / 100)
+    if item.product.selling_price is not None and tax_rate
+    else item.product.selling_price
+)
+
+       
+        
+        tax_amount = (
+    item.product.selling_price - price_without_tax
+    if item.product.selling_price is not None and price_without_tax is not None
+    else 0.0  # Or set an appropriate default value
+)
+        item.final_price = (
+    (item.product.selling_price or 0.0) - item.discount
+    if item.product.selling_price is not None
+    else 0.0  # Default value if selling_price is None
+)
+
+        item.total = (
+    (item.final_price or 0.0) * (item.quantity or 0)
+)
+        item.tax_amount = tax_amount or 0.0
         totalamount+= item.total
     shipping_charge = order.shipping_charge
     grand_total = totalamount + shipping_charge
@@ -3172,11 +3228,16 @@ class WarehouseGetView(BaseTokenView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
+        
+
+
+            
 
 
 
 
-class ProductByWarehouseView(APIView):
+
+class ProductByWarehouseView(BaseTokenView):
     def get(self, request, warehouse_id):
         try:
             authUser, error_response = self.get_user_from_token(request)
@@ -3194,12 +3255,220 @@ class ProductByWarehouseView(APIView):
             # Filter products by warehouse_id
             products = Products.objects.filter(warehouse=warehouse)
 
-            # Serialize the products
-            serializer = ProductsSerializer(products, many=True)
+            # Initialize a set to track unique groupIDs
+            seen_group_ids = set()
+            unique_products = []
+
+            # Iterate through products and filter out duplicates by groupID
+            for product in products:
+                if product.groupID not in seen_group_ids:
+                    seen_group_ids.add(product.groupID)
+                    unique_products.append(product)
+
+            # Serialize the unique products list
+            serializer = ProductSingleviewSerializres(unique_products, many=True)
+
+            return Response({
+                "message": "Product list successfully retrieved",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except authUser.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "User does not exist"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": "An error occurred",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+class WareHouseOrdersView(BaseTokenView):
+    def get(self, request, warehouse_id):
+        try:
+            # Authenticate user from the token (same approach as in OrderListView)
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Ensure the warehouse exists
+            warehouse = get_object_or_404(WareHouse, pk=warehouse_id)
+            if authUser.warehouse_id != warehouse:
+                return Response(
+                    {"status": "error", "message": "You are not authorized to view orders for this warehouse."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Fetch all orders for the given warehouse
+            orders = Order.objects.filter(warehouses=warehouse)
+            if not orders.exists():
+                return Response(
+                    {"status": "error", "message": "No orders found for the given warehouse."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+
+
+            # Serialize the order data
+            serializer = OrderModelSerilizer(orders, many=True)
+
+            # Return the serialized data in the response
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+class AttendanceReportView(BaseTokenView):
+    def get(self, request, date):
+        """
+        Fetch attendance records for all staff for a specific date.
+        """
+        try:
+            # Authenticate the user
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            # Fetch all users (staff)
+            staff_members = User.objects.all()
+            
+            # Initialize a list to hold attendance details
+            attendance_data = []
+
+            # Loop through each staff member
+            for staff in staff_members:
+                # Check if attendance exists for the specified date
+                attendance = Attendance.objects.filter(staff=staff, date=date).first()
+                
+                # Set status to 'Present' by default
+                status_ = 'Present' 
+
+                # If there's an attendance record, update the status
+                if attendance:
+                    status_ = attendance.attendance_status
+
+                # Prepare the attendance data for this staff member
+                attendance_data.append({
+                    "staff_id": staff.id,
+                    "staff_name": staff.name,
+                    "staff_designation": staff.designation,
+                    "date": date,
+                    "status": status_
+                })
+
             return Response(
-                {"message": "Products retrieved successfully", "data": serializer.data},
-                status=status.HTTP_200_OK
+                {"message": f"Attendance records for {date} retrieved successfully", "data": attendance_data},
+                status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(
+                {"status": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    def put(self, request, staff_id, date):
+        """
+        Update attendance status for the specified staff member on the specified date.
+        """
+        try:
+            # Retrieve the staff member by ID
+            staff = User.objects.filter(id=staff_id).first()
+            if not staff:
+                return Response(
+                    {"message": "Staff member not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Check if an attendance record exists for this staff member on the specified date
+            attendance_record = Attendance.objects.filter(staff=staff, date=date).first()
+
+            # If an attendance record exists, update it
+            if attendance_record:
+                # Get the new status from the request data
+                new_status = request.data.get('attendance_status')
+
+                # Validate the status
+                if new_status not in ['Present', 'Absent', 'Half Day Leave']:
+                    return Response(
+                        {"message": "Invalid status"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Update the status
+                attendance_record.attendance_status = new_status
+                attendance_record.save()
+
+                return Response(
+                    {"message": f"Attendance status updated to {new_status} for {staff.name} on {date}"},
+                    status=status.HTTP_200_OK
+                )
+          
+
+        except Exception as e:
+            return Response(
+                {"message": "An error occurred", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+class UpdateCartPricesView(BaseTokenView):
+    def put(self, request):
+        try:
+            # Step 1: Get the authenticated user from the token
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            
+            # Step 2: Check if the user has the required designation
+            if authUser.designation not in ['Accounts', 'Admin']:
+                return Response(
+                    {"status": "error", "message": "User does not have permission to update prices"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Step 3: Get the cart items of the authenticated user
+            cart_items = BeposoftCart.objects.filter(user=authUser)
+
+            if not cart_items.exists():
+                return Response(
+                    {"status": "error", "message": "No cart items found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Step 4: Deserialize the data and update the prices
+            serializer = UpdateCartPricesSerializer(cart_items, many=True, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()  # Save updated prices to the products
+                
+                # Step 5: Reflect the updated prices in the order (if needed)
+                for item in cart_items:
+                    item.order_creation_time = item.updated_at  # Update the order creation time
+                    item.save()
+
+                return Response(
+                    {"status": "success", "message": "Prices updated successfully"},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"status": "error", "message": "Invalid data", "errors": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
         except Exception as e:
             return Response(
                 {"status": "error", "message": "An error occurred", "errors": str(e)},
@@ -3208,9 +3477,93 @@ class ProductByWarehouseView(APIView):
 
 
 
-    
+class FinanceReportAPIView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+        # Retrieve all banks
+            banks =  Bank.objects.all()
+            report_data = []
+            for bank in banks:
+                start_date = bank.created_at  # Start from the bank's created_at date
+               
+                end_date = datetime.today().date()  # Use today's date as the end date
+
+            # Generate a list of dates from the bank's created_at to today
+                all_dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+                opening_balance = float(bank.open_balance)
+                previous_closing_balance = opening_balance
+                bank_reports = []
+
+  
+           
+
+                for date in all_dates:
+                    credits = Order.objects.filter(bank=bank, order_date=date).aggregate(
+                    Sum('total_amount')
+                )['total_amount__sum'] or 0.0
+
+                # Fetch expenses (total amount of expenses on this date for the bank)
+                    expenses = ExpenseModel.objects.filter(bank=bank, expense_date=date).aggregate(
+                    Sum('amount')
+                )['amount__sum'] or 0.0
+
+                # Ensure both credits and expenses are floats before performing the subtraction
+                    credits = float(credits)  # Ensure credits is a float
+                    expenses = float(expenses)  # Ensure expenses is a float
+
+                # If there are no credits or expenses, use the previous day's closing balance for both opening and closing balance
+                    if credits == 0.0 and expenses == 0.0:
+                        opening_balance = previous_closing_balance
+                        closing_balance = previous_closing_balance
+                    else:
+                        closing_balance = opening_balance + credits - expenses
+                        previous_closing_balance = closing_balance  
+
+                # Update the opening balance for the next day (save the closing balance of this day as the opening balance)
+                    
+
+                # Append the report for this date to the bank's reports list
+                    bank_reports.append({
+                    "date": date,
+                    "opening_balance": opening_balance,
+                    "credits": credits,
+                    "expenses": expenses,
+                    "closing_balance": closing_balance,
+                    })
+
+                # Update the opening balance for the next day (set to closing balance)
+                    opening_balance = closing_balance
+                # serialized_data = FinanceReportSerializer(bank_reports, many=True).data    
+
+                report_data.append({
+                "bank_name": bank.name,
+                # "reports": serialized_data
+            }) 
+            return Response(report_data, status=status.HTTP_200_OK)  
+
+  
+
+
 
         
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
+class BankdetailGet(APIView):
+     def get(self, request):
+        try:
+            # authUser, error_response = self.get_user_from_token(request)
+            # if error_response:
+            #     return error_response
+            bank_data=Bank.objects.all()
+            bank_serializer=FinanaceReceiptSerializer(bank_data,many=True)  
+            return Response({"data":bank_serializer.data},status=status.HTTP_200_OK)
+        except Exception as  e :
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

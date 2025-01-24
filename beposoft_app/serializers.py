@@ -155,12 +155,14 @@ class CustomerModelSerializerView(serializers.ModelSerializer):
 class ProductsSerializer(serializers.ModelSerializer):
     family = serializers.PrimaryKeyRelatedField(many=True, queryset=Family.objects.all())
     created_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    warehouse = serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(), required=False)
+    warehouses = serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(), required=False)
+  
 
 
     class Meta:
         model = Products
         fields = "__all__"
+
 
 
 
@@ -232,6 +234,8 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
 class ProductSerializerView(serializers.ModelSerializer):
     variantIDs = serializers.SerializerMethodField()
     images = SingleProductSerializer(read_only=True,many=True)
+    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
+    
 
     class Meta:
         model = Products
@@ -260,12 +264,13 @@ class ProductSerializerView(serializers.ModelSerializer):
                     "size": variant.size if variant.size else None,
                     "stock": variant.stock,
                     "created_user": variant.created_user.name,
+                    "warehouse_name": variant.warehouse.name if variant.warehouse else None,
+                   
                 })
 
             return variant_list
         return []
-        
-
+    
 
     
 class ProductSerializer(serializers.ModelSerializer):
@@ -389,15 +394,32 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     exclude_price = serializers.SerializerMethodField()
     
     
+    
     class Meta:
         model = OrderItem
         fields = "__all__"
+    def get_actual_price(self, obj):
+        # Retrieve the manage_staff_designation from the context
+        order = obj.order  # Access the order related to this order item
+        manage_staff_designation = order.manage_staff.designation
+ 
         
+        # Print the prices for debugging purposes
+        print("Product selling price: ", obj.product.selling_price)
+        print("Product retail price: ", obj.product.retail_price)
+        
+        # Determine which price to return based on the user's designation
+        if manage_staff_designation in ['BDO', 'BDM']:
+            print("Returning selling price:", obj.product.selling_price)
+            return obj.product.selling_price  # Return the selling price if user is BDO or BDM
+        else:
+            print("Returning retail price:", obj.product.retail_price)
+            return obj.product.retail_price
  
     
-    def get_actual_price(self, obj):
-        # Calculate the actual price based on the product type
-        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
+    # def get_actual_price(self, obj):
+    #     # Calculate the actual price based on the product type
+    #     return int(obj.product.selling_price) if obj.product.selling_price is not None else None
     
     def get_exclude_price(self, obj):
         return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
@@ -490,14 +512,25 @@ class BepocartSerializers(serializers.ModelSerializer):
 class BepocartSerializersView(serializers.ModelSerializer):
     name = serializers.CharField(source="product.name")
     tax = serializers.CharField(source="product.tax")
-    price = serializers.CharField(source="product.selling_price")
+
     exclude_price = serializers.CharField(source="product.exclude_price")
     image = serializers.ImageField(source="product.image")
+
+    price = serializers.SerializerMethodField()
+    selling_price = serializers.CharField(source="product.selling_price")
+    retail_price = serializers.CharField(source="product.retail_price")
     class Meta:
         model = BeposoftCart
-        fields = "__all__"
-        
-    
+        fields = [
+            "id", "product", "quantity", "discount", "note", "created_at",
+            "name", "tax", "exclude_price", "image", "selling_price", "retail_price", "price"
+        ]
+    def get_price(self, obj):
+        # Get the user and check if their designation is 'BDO' or 'BDM'
+        user = obj.user
+        if user.designation in ['BDO', 'BDM']:
+            return obj.product.selling_price  # If designation is BDO or BDM, return the selling price
+        return obj.product.retail_price 
     
 
 
@@ -555,6 +588,10 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
                   "state","payment_status","status","total_amount",
                   "bank","payment_method","payment_receipts",
                   "shipping_charge","customerID","perfoma_items"]
+    def to_representation(self, instance):
+        # Add manage_staff_designation to the context of nested serializers
+        self.context["manage_staff_designation"] = instance.manage_staff.designation
+        return super().to_representation(instance)    
 
         
 
@@ -604,6 +641,11 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
         # Calculate the total paid amount from all related payment receipts for this order
         total_paid = obj.recived_payment.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
         return total_paid
+    
+class WarehouseDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WareHouse
+        fields = "__all__"      
 
           
 
@@ -792,6 +834,75 @@ class ProductStockviewSerializres(serializers.ModelSerializer):
 class WarehouseDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = WareHouse
-        fields = "__all__"   
+        fields = "__all__"  
+
+class OrderRequestSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    requested_by_name = serializers.CharField(source='requested_by.name', read_only=True)
+    source_warehouse_name = serializers.CharField(source='source_warehouse.name', read_only=True)
+    target_warehouse_name = serializers.CharField(source='target_warehouse.name', read_only=True)
+
+    class Meta:
+        model = OrderRequest
+        fields = ['id', 'product', 'product_name', 'requested_by', 'requested_by_name', 'source_warehouse', 
+                  'source_warehouse_name', 'target_warehouse', 'target_warehouse_name', 'quantity', 'status', 
+                  'created_at', 'updated_at']
+        
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    staff_name = serializers.CharField(source='staff.name', read_only=True)
+    staff_designation = serializers.CharField(source='staff.designation', read_only=True)
+
+    class Meta:
+        model = Attendance
+        fields = ['id', 'staff', 'staff_name', 'staff_designation', 'date', 'attendance_status']        
+        
+    def validate_attendance_status(self, value):
+        """
+        Custom validation for attendance status to ensure it's one of the valid options.
+        """
+        if value not in ['Present', 'Absent', 'Half Day Leave']:
+            raise serializers.ValidationError("Invalid status")
+        return value
+
+class UpdateCartPricesSerializer(serializers.ModelSerializer):
+    selling_price = serializers.FloatField(required=False)
+    retail_price = serializers.FloatField(required=False)
+
+    class Meta:
+        model = BeposoftCart
+        fields = ['id', 'selling_price', 'retail_price']
+
+    def update(self, instance, validated_data):
+        # Update only if prices are provided
+        if 'selling_price' in validated_data:
+            instance.product.selling_price = validated_data['selling_price']
+            instance.product.save()
+
+        if 'retail_price' in validated_data:
+            instance.product.retail_price = validated_data['retail_price']
+            instance.product.save()
+
+        return instance
     
-    
+
+
+
+
+class BankbasedReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentReceipt
+        fields = '__all__'
+
+
+
+
+
+
+
+
+class FinanaceReceiptSerializer(serializers.ModelSerializer):
+    payments=BankbasedReceiptSerializer(read_only=True,many=True)
+    class Meta:
+        model=Bank
+        fields = '__all__'

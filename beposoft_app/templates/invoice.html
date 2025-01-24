@@ -269,6 +269,10 @@
                                                 </th>
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                 align="center">
+                                              Discount
+                                            </th>
+                                                <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
+                                                align="center">
                                                 Quantity
                                             </th>
                                               
@@ -277,10 +281,7 @@
                                                     Price
                                                 </th>
                                               
-                                                <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
-                                                align="center">
-                                              Discount
-                                            </th>
+                                                
 
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px;"
                                                     align="right">
@@ -316,6 +317,8 @@
                                                 align="center">{{item.product.tax}}</td>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                 align="center">{{item.tax_amount|floatformat:2}}</td>
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                align="center">{{ item.discount|floatformat:2 }}</td>
                                                
                                                     <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 18px; vertical-align: top; padding: 10px 0;"
                                                     align="center">
@@ -323,8 +326,7 @@
                                                 </td>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                     align="center">{{ item.final_price|floatformat:2 }}</td>
-                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
-                                                    align="center">{{ item.discount|floatformat:2 }}</td>
+                                                   
 
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33;  line-height: 18px;  vertical-align: top; padding:10px 0;"
                                                     align="right">{{item.total|floatformat:2 }}</td>

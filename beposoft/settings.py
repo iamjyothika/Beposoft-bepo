@@ -35,7 +35,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://65.1.147.199"
 ]
 CSRF_TRUSTED_ORIGINS = [
-    'http://65.1.147.199',  # Your IP or domain
+    'http://65.1.147.199',
+    "http://localhost:5173",
+        # Your IP or domain
 ]
 
 CORS_ALLOW_ALL_ORIGINS  = True
@@ -169,6 +171,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AWS_STORAGE_BUCKET_NAME = 'beposoft-bkt'
 AWS_S3_REGION_NAME = 'ap-south-1'
 AWS_S3_SIGNATURE_VERSION = 's3v4'
+
+
+
 
 AWS_S3_FILE_OVERWRITE = False  
 AWS_DEFAULT_ACL = None        

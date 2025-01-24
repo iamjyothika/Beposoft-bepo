@@ -86,12 +86,19 @@ urlpatterns = [
     path('api/shipping/<int:pk>/order/',ShippingManagementView.as_view(),name = "shipping-management"),
     path('api/add/order/<int:pk>/product/',ExistedOrderAddProducts.as_view()),
     path('api/remove/order/<int:pk>/item/',RemoveExistsOrderItems.as_view()),
+    
+
+    
+
+    
+   
 
         
     path('api/staff/customers/',StaffCustomersView.as_view(),name="staff-customers"),
     path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
     path('api/cart/products/',StaffcartStoredProductsView.as_view()),
     path('api/cart/update/<int:pk>/',StaffDeleteCartProduct.as_view()),
+    path('api/cart/price/',UpdateCartPricesView.as_view()),
     
     
     
@@ -146,6 +153,8 @@ urlpatterns = [
     path('api/sold/products/',ProductSalesReportView.as_view()),
     
     path('api/product/stock/report/',ProductStockReportView.as_view()),
+    path('api/finance-report/',FinanceReportAPIView.as_view()),
+    
     
     
     
@@ -157,8 +166,27 @@ urlpatterns = [
 
 
     path('api/warehouse/add/',WarehouseAddView.as_view()),
+    
     path('api/warehouse/update/<int:pk>/',WarehouseGetView.as_view()),
     path('api/warehouse/products/<int:warehouse_id>/',ProductByWarehouseView.as_view()),
+    path('api/warehouse/orders/<int:warehouse_id>/',WareHouseOrdersView.as_view()),
+
+    path('api/get/staff/attendance/<str:date>/', AttendanceReportView.as_view(), name='attendance-report'),
+    path('api/attendance/status/update/<int:staff_id>/<str:date>/', AttendanceReportView.as_view(), name='get_attendance_status'),
+
+
+
+    path('api/bankdetail/get/',BankdetailGet.as_view()),
+
+
+
+
+
+
+
+
+
+    
 
 
 
