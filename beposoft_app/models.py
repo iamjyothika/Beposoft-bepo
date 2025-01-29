@@ -620,13 +620,17 @@ class Warehousedata(models.Model):
     packed_by=models.ForeignKey(User,on_delete=models.CASCADE)
     parcel_service=models.ForeignKey(ParcalService, on_delete=models.CASCADE,null=True, blank=True)  
     tracking_id=models.CharField(max_length=100,null=True, blank=True)
+    actual_weight = models.DecimalField(max_digits=10,decimal_places=2, null=True, blank=True,default=0.0)
+    parcel_amount=models.DecimalField(max_digits=10,decimal_places=2, null=True, blank=True,default=0.0)
     shipping_charge=models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE,null=True)
     status=models.CharField(max_length=30,null=True, blank=True)
     shipped_date=models.DateField(null=True, blank=True)
-
     def __str__(self):
-        return f"{self.box} - {self.parcel_service.name} ({self.shipped_date})"
+        parcel_service_name = self.parcel_service.name if self.parcel_service else "No Parcel Service"
+        shipped_date_str = self.shipped_date.strftime("%Y-%m-%d") if self.shipped_date else "No Shipped Date"
+        return f"{self.box} - {parcel_service_name} ({shipped_date_str})"
 
 
 class GRVModel(models.Model):

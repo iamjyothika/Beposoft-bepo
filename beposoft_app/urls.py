@@ -123,7 +123,7 @@ urlpatterns = [
     
     path('api/warehouse/data/',WarehouseDataView.as_view()),
     path('api/warehouse/detail/<int:pk>/',WarehouseDetailView.as_view()),
-    path('api/warehouse/box/detail/',DailyGoodsView.as_view()),
+    path('api/warehouse/box/detail/',DailyGoodsView.as_view()),            #deliveryreport
     path('api/warehousedata/<str:date>/',DailyGoodsBydate.as_view()),
     
     
@@ -153,7 +153,7 @@ urlpatterns = [
     path('api/sold/products/',ProductSalesReportView.as_view()),
     
     path('api/product/stock/report/',ProductStockReportView.as_view()),
-    path('api/finance-report/',FinanceReportAPIView.as_view()),
+    path('api/finance-report/',FinancereportAPIView.as_view()),
     
     
     
@@ -171,34 +171,44 @@ urlpatterns = [
     path('api/warehouse/products/<int:warehouse_id>/',ProductByWarehouseView.as_view()),
     path('api/warehouse/orders/<int:warehouse_id>/',WareHouseOrdersView.as_view()),
 
-    path('api/get/staff/attendance/<str:date>/', AttendanceReportView.as_view(), name='attendance-report'),
-    path('api/attendance/status/update/<int:staff_id>/<str:date>/', AttendanceReportView.as_view(), name='get_attendance_status'),
-
-
-
-    path('api/bankdetail/get/',BankdetailGet.as_view()),
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
+   
+    path('api/attendance/',AttendanceView.as_view()),
+    path('api/attendance/update/<int:pk>/', AttendanceUpdateAPIView.as_view(), name='attendance_update'),
+    path('api/attendance/report/all/', AllStaffAttendanceReportAPIView.as_view(), name='all_staff_attendance_report'),
+    path('api/attendance/absence/<int:staff_id>/', StaffAttendanceAbsenceAPIView.as_view(), name='attendance_absence'),
 ]
+
+
+
+
+
+ 
+
+
+
+   
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
 

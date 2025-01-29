@@ -26,6 +26,10 @@ import pandas as pd
 import os
 from django.utils import timezone
 from django.shortcuts import render
+from datetime import date
+
+
+
 
 
 class UserRegistrationAPIView(APIView):
@@ -63,6 +67,16 @@ class UserLoginAPIView(APIView):
                 customer = User.objects.filter(email=email, approval_status="approved").first()
 
                 if customer and customer.check_password(password):
+                    if customer.designation=="HR":
+                        self.handle()
+
+
+
+                 
+                    
+
+                        
+
                     
                     # Generate JWT token
                     expiration_time = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
@@ -122,6 +136,15 @@ class UserLoginAPIView(APIView):
                 "message": "An error occurred",
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def handle(self, *args, **kwargs):
+        today = now().date()
+        staff_members = User.objects.all()
+
+        for staff in staff_members:
+            # Create attendance for staff if it doesn't exist for today
+            Attendance.objects.get_or_create(staff=staff, date=today, defaults={"attendance_status": "Present"})
+      
+
         
 
 
@@ -156,7 +179,7 @@ class BaseTokenView(APIView):
         
         except Exception as e:
             return None, Response({"status": "error", "message": "An error occurred while decoding the token", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+      
         
 
 class UserProfileData(BaseTokenView):
@@ -1230,6 +1253,7 @@ class CreateOrder(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+           
             
             # Retrieve cart items and validate serializer
             cart_items = BeposoftCart.objects.filter(user=authUser)
@@ -1238,8 +1262,20 @@ class CreateOrder(BaseTokenView):
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
             order = serializer.save()
-            order.status = 'Invoice Created'
+            
+            
+            
+            warehouse_request = request.data.get("warehouse_request", False)
+            if warehouse_request:
+                # Update status for "Order Request by Warehouse"
+                order.status = "Order Request by Warehouse"
+            else:
+                # Default status update
+                order.status = "Invoice Created"
             order.save()
+
+
+           
               # Create order
             
             for item_data in cart_items:
@@ -2128,6 +2164,20 @@ class DailyGoodsView(BaseTokenView):
                             total_shipping_charge += float(box.shipping_charge)
                         except (ValueError, TypeError):
                             continue
+                    total_actual_weight = 0
+                    for box in boxes_for_date:
+                        try:
+                            total_actual_weight += float(box.actual_weight)
+                        except (ValueError, TypeError):
+                            continue 
+                     # Calculate total parcel amount
+                    total_parcel_amount = 0
+                    for box in boxes_for_date:
+                        try:
+                            total_parcel_amount += float(box.parcel_amount)
+                        except (ValueError, TypeError):
+                            continue       
+
                     total_boxes = boxes_for_date.count()    
 
                     # Serialize the boxes for the date
@@ -2141,7 +2191,10 @@ class DailyGoodsView(BaseTokenView):
 
                         "total_weight": round(total_weight, 2),
                         "total_volume_weight": round(total_volume_weight, 2),
-                        "total_shipping_charge":round(total_shipping_charge,2)          #shipping_charge=delivery_charge
+                        "total_shipping_charge":round(total_shipping_charge,2),
+                        "total_actual_weight": round(total_actual_weight, 2), 
+                        "total_parcel_amount": round(total_parcel_amount, 2),
+                                          #shipping_charge=delivery_charge
                         # "boxes": serializer.data
                     })
 
@@ -3327,99 +3380,113 @@ class WareHouseOrdersView(BaseTokenView):
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
-class AttendanceReportView(BaseTokenView):
-    def get(self, request, date):
+        
+class AttendanceView(BaseTokenView):
+    def get(self, request):
+        try:
+            attendance_data=Attendance.objects.all().order_by('-date')
+            serializer = AttendanceSerializer(attendance_data, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Attendance not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class AttendanceUpdateAPIView(APIView):
+    def put(self, request, pk):
+        try:
+            attendance = Attendance.objects.get(pk=pk)
+            serializer = AttendanceSerializer(attendance, data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class AllStaffAttendanceReportAPIView(APIView):
+    def get(self, request):
         """
-        Fetch attendance records for all staff for a specific date.
+        Get the attendance report of all staff showing the count of Present, Half Day Leave, and Absent days up to today, excluding Sundays.
         """
         try:
-            # Authenticate the user
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-            
-            # Fetch all users (staff)
-            staff_members = User.objects.all()
-            
-            # Initialize a list to hold attendance details
-            attendance_data = []
+            today = date.today()
+            report_data = []
 
             # Loop through each staff member
-            for staff in staff_members:
-                # Check if attendance exists for the specified date
-                attendance = Attendance.objects.filter(staff=staff, date=date).first()
-                
-                # Set status to 'Present' by default
-                status_ = 'Present' 
+            for staff in User.objects.all():
+                # Filter attendance records up to today, excluding Sundays
+                attendance_records = Attendance.objects.filter(
+                    staff=staff,
+                    date__lte=today
+                ).exclude(date__week_day=1)  # Exclude Sundays (1 = Sunday in Django `date__week_day`)
 
-                # If there's an attendance record, update the status
-                if attendance:
-                    status_ = attendance.attendance_status
-
-                # Prepare the attendance data for this staff member
-                attendance_data.append({
+                report_data.append({
                     "staff_id": staff.id,
                     "staff_name": staff.name,
-                    "staff_designation": staff.designation,
-                    "date": date,
-                    "status": status_
+                    "present_count": attendance_records.filter(attendance_status="Present").count(),
+                    "half_day_leave_count": attendance_records.filter(attendance_status="Half Day Leave").count(),
+                    "absent_count": attendance_records.filter(attendance_status="Absent").count(),
                 })
 
+            # Serialize and return the data
+            serializer = AttendanceSummarySerializer(report_data, many=True)
             return Response(
-                {"message": f"Attendance records for {date} retrieved successfully", "data": attendance_data},
-                status=status.HTTP_200_OK)
-        except Exception as e:
-            print(e)
-            return Response(
-                {"status": "An error occurred", "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"message": "Attendance report retrieved successfully, excluding Sundays.", "data": serializer.data},
+                status=status.HTTP_200_OK,
             )
-    
-    def put(self, request, staff_id, date):
+
+        except Exception as e:
+            return Response(
+                {"message": "An unexpected error occurred.", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )  
+        
+class StaffAttendanceAbsenceAPIView(APIView):
+    def get(self, request, staff_id):
         """
-        Update attendance status for the specified staff member on the specified date.
+        Get the attendance report of a single staff member, showing absence and half-day leave up to today.
         """
         try:
-            # Retrieve the staff member by ID
+            # Get the staff member
             staff = User.objects.filter(id=staff_id).first()
             if not staff:
                 return Response(
-                    {"message": "Staff member not found"},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"message": "Staff member not found."},
+                    status=status.HTTP_404_NOT_FOUND,
                 )
 
-            # Check if an attendance record exists for this staff member on the specified date
-            attendance_record = Attendance.objects.filter(staff=staff, date=date).first()
-
-            # If an attendance record exists, update it
-            if attendance_record:
-                # Get the new status from the request data
-                new_status = request.data.get('attendance_status')
-
-                # Validate the status
-                if new_status not in ['Present', 'Absent', 'Half Day Leave']:
-                    return Response(
-                        {"message": "Invalid status"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                # Update the status
-                attendance_record.attendance_status = new_status
-                attendance_record.save()
-
-                return Response(
-                    {"message": f"Attendance status updated to {new_status} for {staff.name} on {date}"},
-                    status=status.HTTP_200_OK
-                )
-          
+            # Generate the response data using the serializer
+            serializer = AttendanceAbsenceSerializer(staff)
+            return Response(
+                {"message": "Attendance report retrieved successfully.", "data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
             return Response(
-                {"message": "An error occurred", "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+                {"message": "An unexpected error occurred.", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )              
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3477,93 +3544,18 @@ class UpdateCartPricesView(BaseTokenView):
 
 
 
-class FinanceReportAPIView(BaseTokenView):
-    def get(self, request):
-        try:
-            authUser, error_response = self.get_user_from_token(request)
-            if error_response:
-                return error_response
-        # Retrieve all banks
-            banks =  Bank.objects.all()
-            report_data = []
-            for bank in banks:
-                start_date = bank.created_at  # Start from the bank's created_at date
-               
-                end_date = datetime.today().date()  # Use today's date as the end date
-
-            # Generate a list of dates from the bank's created_at to today
-                all_dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
-                opening_balance = float(bank.open_balance)
-                previous_closing_balance = opening_balance
-                bank_reports = []
-
-  
-           
-
-                for date in all_dates:
-                    credits = Order.objects.filter(bank=bank, order_date=date).aggregate(
-                    Sum('total_amount')
-                )['total_amount__sum'] or 0.0
-
-                # Fetch expenses (total amount of expenses on this date for the bank)
-                    expenses = ExpenseModel.objects.filter(bank=bank, expense_date=date).aggregate(
-                    Sum('amount')
-                )['amount__sum'] or 0.0
-
-                # Ensure both credits and expenses are floats before performing the subtraction
-                    credits = float(credits)  # Ensure credits is a float
-                    expenses = float(expenses)  # Ensure expenses is a float
-
-                # If there are no credits or expenses, use the previous day's closing balance for both opening and closing balance
-                    if credits == 0.0 and expenses == 0.0:
-                        opening_balance = previous_closing_balance
-                        closing_balance = previous_closing_balance
-                    else:
-                        closing_balance = opening_balance + credits - expenses
-                        previous_closing_balance = closing_balance  
-
-                # Update the opening balance for the next day (save the closing balance of this day as the opening balance)
-                    
-
-                # Append the report for this date to the bank's reports list
-                    bank_reports.append({
-                    "date": date,
-                    "opening_balance": opening_balance,
-                    "credits": credits,
-                    "expenses": expenses,
-                    "closing_balance": closing_balance,
-                    })
-
-                # Update the opening balance for the next day (set to closing balance)
-                    opening_balance = closing_balance
-                # serialized_data = FinanceReportSerializer(bank_reports, many=True).data    
-
-                report_data.append({
-                "bank_name": bank.name,
-                # "reports": serialized_data
-            }) 
-            return Response(report_data, status=status.HTTP_200_OK)  
-
-  
 
 
-
-        
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class BankdetailGet(APIView):
+class FinancereportAPIView(BaseTokenView):
      def get(self, request):
         try:
-            # authUser, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
+           
             bank_data=Bank.objects.all()
             bank_serializer=FinanaceReceiptSerializer(bank_data,many=True)  
             return Response({"data":bank_serializer.data},status=status.HTTP_200_OK)
         except Exception as  e :
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
 

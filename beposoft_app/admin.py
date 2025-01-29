@@ -25,6 +25,7 @@ admin.site.register(PaymentReceipt)
 admin.site.register(Company)
 admin.site.register(Warehousedata)
 admin.site.register(ParcalService)
+admin.site.register(Attendance)
 
 
 

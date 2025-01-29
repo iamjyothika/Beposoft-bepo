@@ -6,6 +6,8 @@ from django.db.models import Sum
 from datetime import datetime
 from django.db.models import F, Sum, FloatField
 from django.db.models.functions import Cast
+from datetime import date
+
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
@@ -436,7 +438,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
             'parcel_service', 'tracking_id', 'shipping_charge', 'status',
-            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family',
+            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family','actual_weight','parcel_amount'
         ]
 
     def to_representation(self, instance):
@@ -451,7 +453,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
 class WarehouseUpdateSerializers(serializers.ModelSerializer):
     class Meta :
         model = Warehousedata
-        fields = ['parcel_service','tracking_id','shipping_charge']
+        fields = ['parcel_service','tracking_id','shipping_charge','actual_weight','parcel_amount']
         
         
 # class OrderModelSerilizer(serializers.ModelSerializer):
@@ -886,13 +888,22 @@ class UpdateCartPricesSerializer(serializers.ModelSerializer):
         return instance
     
 
+class CompanyExpenseSeriizers(serializers.ModelSerializer):
+    class Meta :
+        model = ExpenseModel
+        fields = ['id','amount','expense_date']
+
+
+    
+
 
 
 
 class BankbasedReceiptSerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentReceipt
-        fields = '__all__'
+        fields = ['payment_receipt','amount','received_at']
+
 
 
 
@@ -903,6 +914,38 @@ class BankbasedReceiptSerializer(serializers.ModelSerializer):
 
 class FinanaceReceiptSerializer(serializers.ModelSerializer):
     payments=BankbasedReceiptSerializer(read_only=True,many=True)
+    banks=CompanyExpenseSeriizers(read_only=True,many=True)
     class Meta:
         model=Bank
-        fields = '__all__'
+        fields = ['id','name','open_balance','payments','banks']
+
+
+class AttendanceSummarySerializer(serializers.Serializer):
+    staff_id = serializers.IntegerField()
+    staff_name = serializers.CharField()
+    present_count = serializers.IntegerField()
+    half_day_leave_count = serializers.IntegerField()
+    absent_count = serializers.IntegerField()  
+
+
+class AttendanceDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attendance
+        fields = ["date", "attendance_status"]
+
+class AttendanceAbsenceSerializer(serializers.Serializer):
+    staff_id = serializers.IntegerField(source='id')
+    staff_name = serializers.CharField(source='name')
+    absences = serializers.SerializerMethodField()
+
+    def get_absences(self, obj):
+        today = date.today()
+        # Filter absences and half-day leaves up to today
+        attendance_records = Attendance.objects.filter(
+            staff=obj, 
+            date__lte=today, 
+            attendance_status__in=["Absent", "Half Day Leave"]
+        ).order_by("date")
+
+        # Serialize the filtered attendance records
+        return AttendanceDetailSerializer(attendance_records, many=True).data          
