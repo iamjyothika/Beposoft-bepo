@@ -3890,7 +3890,8 @@ class CustomerUploadView(BaseTokenView):
                 return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
             customers_data = []
             errors=[]
-            for _, row in df.iterrows():
+
+            for index, row in df.iterrows():
 
           
            
@@ -3899,24 +3900,34 @@ class CustomerUploadView(BaseTokenView):
                     if pd.notna(row['state']):
                         state_instance = State.objects.filter(name=row['state']).first()
 
+                    # ✅ Validate phone number
                     phone_number = str(row['number']).strip() if pd.notna(row['number']) else None
                     if not phone_number:
-                        errors.append({"row": _, "error": "Missing phone number"})
-                        continue 
+                        errors.append({"row": index, "error": "Missing phone number"})
+                        continue  # Skip row
+
+                    # ✅ Check if customer already exists
                     customer = Customers.objects.filter(phone=phone_number).first()
-                    if not customer:   
+                   
+                   
+
+                   
+                    if not customer: 
+                        customer = Customers(
+                            name=row['label'],
+                            phone=phone_number,
+                            alt_phone=row['mobile'] if pd.notna(row['mobile']) else None,
+                            email=row['mail'] if pd.notna(row['mail']) else None,
+                            address=row['adress'] if pd.notna(row['adress']) else None,
+                            zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
+                            city=row['city'] if pd.notna(row['city']) else None,
+                            
+                            state=state_instance,
+                            created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
+                            manager=authUser
+
                        
-                        customer=Customers(
-                        name=row['label'],
-                        phone=phone_number,
-                        alt_phone=row['mobile'] if pd.notna(row['mobile']) else None,  
-                        email=row['mail'] if pd.notna(row['mail']) else None,  
-                        address=row['adress'] if pd.notna(row['adress']) else None,
-                        zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
-                        city=row['city'] if pd.notna(row['city']) else None, 
-                        state=state_instance,
-                        created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
-                        manager=authUser
+                       
                     )
                         customer.save()
                         customer_data = {
@@ -3935,8 +3946,13 @@ class CustomerUploadView(BaseTokenView):
                                     
             }
                         customers_data.append(customer_data)
+                        print(f"✅ Customer Created: {customer_data}") 
                 except Exception as e:
-                    return Response({"error": f"Error processing customer data: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    errors.append({"row": index, "error": str(e)})
+                    print(f"❌ Error processing row {index}: {str(e)}")
+                    continue 
+                    
+                    
 
 
 
