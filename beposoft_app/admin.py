@@ -26,6 +26,7 @@ admin.site.register(Company)
 admin.site.register(Warehousedata)
 admin.site.register(ParcalService)
 admin.site.register(Attendance)
+admin.site.register(WareHouse)
 
 
 

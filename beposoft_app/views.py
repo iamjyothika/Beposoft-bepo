@@ -1262,17 +1262,11 @@ class CreateOrder(BaseTokenView):
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
             order = serializer.save()
+            print(serializer.data)
             
             
             
-            warehouse_request = request.data.get("warehouse_request", False)
-            if warehouse_request:
-                # Update status for "Order Request by Warehouse"
-                order.status = "Order Request by Warehouse"
-            else:
-                # Default status update
-                order.status = "Invoice Created"
-            order.save()
+           
 
 
            
@@ -2890,6 +2884,7 @@ class ProductBulkUploadAPIView(BaseTokenView):
         products_data = []
         for _, row in df.iterrows():
             try:
+
                 # Retrieve or create the family objects
                 family_names = row['family'].split(',')
                 families = Family.objects.filter(name__in=family_names)
@@ -2918,7 +2913,308 @@ class ProductBulkUploadAPIView(BaseTokenView):
                 return Response({"error": f"Error saving product: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Products successfully uploaded", "products": products_data}, status=status.HTTP_201_CREATED)
+
+
+            
+class OrderBulkUploadAPIView(BaseTokenView):
+        parser_classes = (MultiPartParser, FormParser)
+
+        def post(self, request, *args, **kwargs):
+            
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+                
+                
+            # Check if file is provided
+            if 'file' not in request.FILES:
+                return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Read the file based on its type (CSV or Excel)
+            excel_file = request.FILES['file']
+            try:
+                file_extension = os.path.splitext(excel_file.name)[1].lower()
+                
+                if file_extension == '.csv':
+                    df = pd.read_csv(excel_file)  # Handle CSV files
+                elif file_extension in ['.xlsx', '.xls']:
+                    df = pd.read_excel(excel_file, engine='openpyxl')  # Handle Excel files
+                else:
+                    return Response({"error": "Unsupported file format. Please upload a CSV or Excel file."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            required_columns = [
+    "Name", "Email", "Financial Status", "Paid at", "Fulfillment Status", "Fulfilled at", "Accepts Marketing", "Currency", "Subtotal", "Shipping", "Taxes",
+    "Total", "Discount Code", "Discount Amount", "Shipping Method", "Created at", "Lineitem name", "Lineitem price", "Lineitem compare at price"
+] + [
+    f"Lineitem sku{i}" for i in range(1, 11)
+] + [
+    f"Lineitem quantity{i}" for i in range(1, 11)
+] + [
+    "Lineitem requires shipping", "Lineitem taxable", "Lineitem fulfillment status", "Billing Name", "Billing Street", "Billing Address1",
+    "Billing Address2", "Billing Company", "Billing City", "Billing Zip", "Billing Province", "Billing Country", "Billing Phone", "Shipping Name", "Shipping Street",
+    "Shipping Address1", "Shipping Address2", "Shipping Company", "Shipping City", "Shipping Zip", "Shipping Province", "Shipping Country", "Shipping Phone",
+    "Notes", "Note Attributes", "Cancelled at", "Payment Method", "Payment Reference", "Refunded Amount", "Vendor", "Outstanding Balance", "Employee", "Location",
+    "Device ID", "Id", "Tags", "Risk Level", "Source", "Lineitem discount", "Tax 1 Name", "Tax 1 Value", "Tax 2 Name", "Tax 2 Value", "Tax 3 Name", "Tax 3 Value",
+    "Tax 4 Name", "Tax 4 Value", "Tax 5 Name", "Tax 5 Value", "Phone", "Receipt Number", "Duties", "Billing Province Name", "Shipping Province Name", "Payment ID",
+    "Payment Terms Name", "Next Payment Due At", "Payment References"
+]
+
+
+      
+
+                            
     
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Process and save the data to the database
+            customers_data = []
+            orders_data=[]
+            shipping_datas=[]
+            cart_details=[]
+
+            for _, row in df.iterrows():
+                try:
+                    shipping_phone = row["Billing Phone"]
+                    customer = Customers.objects.filter(phone=shipping_phone).first()
+                    province_=row["Shipping Province"]
+                    shipping_province_=State.objects.filter(province=province_).first()
+
+
+                    if not customer:
+                        manager = User.objects.get(pk=2) 
+
+                        customer =Customers(
+                        email=row['Email'],
+                        name=row['Billing Name'],
+                        address=row['Billing Address1'],
+                        phone=row["Billing Phone"],
+                        city=row['Billing City'],
+                        zip_code=row['Billing Zip'],
+                        manager = manager # Fetch the User instance with ID 2
+                        
+
+
+                        
+                        # created_user= authUser  
+                    )
+                        customer.save()
+                        print(f"✅ New customer created: {customer.id} - {customer.name}")
+                        state_instance = shipping_province_
+                        if state_instance:
+                            print(f"✅ State Found: {state_instance.name} (ID: {state_instance.id})")
+
+                 
+                    
+                        
+                 
+
+
+                        created_user=User.objects.get(pk=2) 
+
+                        shipping_address=Shipping(
+                            name=row['Shipping Name'],
+                            address=row['Shipping Address1'],
+                            zipcode=row['Shipping Zip'],
+                            city=row['Shipping City'],
+                            state=state_instance,
+                            country=row['Shipping Country'],
+                            phone=row['Shipping Phone'],
+                            email=row['Email'],
+                            created_user=created_user,
+                            customer=customer
+                            
+                        )
+                        shipping_address.save()
+
+                        for i in range(1, 11):  # Loop through up to 10 products
+                            product_sku = row.get(f"Lineitem sku{i}")  # Extract product SKU
+                            product_quantity = row.get(f"Lineitem quantity{i}") 
+                            if not product_sku or not product_quantity:
+                                print(f"❌ Skipping product addition: Missing SKU or Quantity for Lineitem {i}")
+                                continue 
+                            try:
+                                product = Products.objects.get(pk=product_sku)  # Fetch product using SKU
+                                existing_cart_item = BeposoftCart.objects.filter(user=customer.manager, product=product).first()
+                                if existing_cart_item:
+                                    print(f"❌ Product already exists in the cart: {product.name} (Quantity: {existing_cart_item.quantity})")
+                                    continue 
+                                cart_item = BeposoftCart.objects.create(
+                                     user=authUser,  # Assign the customer's manager as the cart owner
+                                     product=product,
+                                     quantity=int(product_quantity)
+                         )
+                                
+                                print(f"✅ Product added to cart: {product.name} (Quantity: {product_quantity})")
+                            except Products.DoesNotExist:
+                                print(f"❌ Product with SKU '{product_sku}' not found. Skipping.")
+                        manage_staff=User.objects.get(pk=2)
+                        company = Company.objects.get(pk=1)
+                        family = Family.objects.get(pk=3)
+                        bank = Bank.objects.get(pk=2)
+                          
+                        warehouses = WareHouse.objects.get(pk=1)
+                        orderdatas=Order(
+                            customer=customer,
+                            company=company,
+                            manage_staff=manage_staff,
+                            family=family,
+                            billing_address =shipping_address,
+                            order_date=row['Created at'],
+                            state=state_instance,
+                            payment_status=row['Financial Status'],
+                            total_amount=row['Total'],
+                            bank=bank,
+                            payment_method=row['Payment Method'],
+                            warehouses=warehouses,
+                            status="Invoice Created",
+
+
+
+
+
+
+                            
+                        )
+                        orderdatas.save()
+                        print(f"✅ Order created and saved: {orderdatas.id}")
+
+
+
+
+                        
+
+
+
+                        
+
+
+
+        
+
+           
+
+
+                       
+                        
+
+                      
+
+                        customer_data = {
+                                    "customer_id": customer.id,
+                                    "customer_name": customer.name,
+                                    "customer_email": customer.email,
+                                    "customer_phone": customer.phone,
+                                    "customer_address": customer.address,
+                                    "customer_city": customer.city,
+                                    "customer_zip_code": customer.zip_code
+                                    
+            }
+                        customers_data.append(customer_data)
+                        # ✅ Append shipping details for new customers
+                        shipping_data = {
+                                 "shipping_id": shipping_address.id,
+                                 "customer_id": customer.id,
+                                 "shipping_name": shipping_address.name,
+                                 "shipping_address": shipping_address.address,
+                                 "zipcode": shipping_address.zipcode,
+                                 "city": shipping_address.city,
+                                 "state": shipping_address.state.name,
+                                 
+           
+                                "country": shipping_address.country,
+                                "phone": shipping_address.phone,
+                                "email": shipping_address.email
+            }
+                        shipping_datas.append(shipping_data)
+                        carts_={
+                            
+                            "customer_id": customer.id,
+                            "customer_name": customer.name,
+                            "cart_id": cart_item.id,
+                            "product_id": product.id,
+                            "product_name": product.name,
+                            "quantity": product_quantity
+                        }
+                        
+
+                        cart_details.append(carts_)
+                        order_data={
+                            
+                            "customer_id": customer.id,
+                            "customer_name": customer.name,
+                            "billing_address_id": shipping_address,
+                            "order_date": orderdatas.order_date,
+                            "state_id": state_instance.id if state_instance else None, 
+                            "payment_status": orderdatas.payment_status,
+                           "total_amount": orderdatas.total_amount,
+                          "payment_method": orderdatas.payment_method,
+                           "warehouses_id": orderdatas.warehouses.id,
+            }
+                        orders_data.append(order_data)
+                        
+                        
+
+                       
+                            
+
+
+                            
+                        
+
+
+
+
+
+                        print(f"✅ New Customer Added: {customer_data}")
+                        print(f"✅ Shipping Address Added: {shipping_data}")
+                        print(f"✅ Cart details Added: {carts_}")
+                    
+
+                
+
+                            
+
+
+        
+                            
+
+
+                        
+                        
+                 
+
+                        
+
+                        
+
+
+
+
+
+
+                except Exception as e:
+                    return Response({"error": f"Error saving product: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+
+            return Response({
+    "message": "New Customers and their Shipping Addresses successfully added",
+    "customers": customers_data,
+    "shipping_addresses": shipping_datas,
+    "carts_data":cart_details,
+    "ordersss":orders_data
+    
+   
+    
+}, status=status.HTTP_201_CREATED)
+
+
+
+
+
+        
     
     
 class ProductStockReportView(BaseTokenView):
@@ -3549,13 +3845,141 @@ class UpdateCartPricesView(BaseTokenView):
 class FinancereportAPIView(BaseTokenView):
      def get(self, request):
         try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
            
             bank_data=Bank.objects.all()
             bank_serializer=FinanaceReceiptSerializer(bank_data,many=True)  
             return Response({"data":bank_serializer.data},status=status.HTTP_200_OK)
         except Exception as  e :
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
+class CustomerUploadView(BaseTokenView):
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self, request, *args, **kwargs):
+
+   
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            if 'file' not in request.FILES:
+                return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Read the file based on its type (CSV or Excel)
+            excel_file = request.FILES['file']
+            try:
+                file_extension = os.path.splitext(excel_file.name)[1].lower()
+                if file_extension == '.csv':
+                    df = pd.read_csv(excel_file)  
+                elif file_extension in ['.xlsx', '.xls']:
+                    df = pd.read_excel(excel_file, engine='openpyxl')  # Handle Excel files
+                else:
+                    return Response({"error": "Unsupported file format. Please upload a CSV or Excel file."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            required_columns = ["id","companies_id","ordre","label","adress","zipcode","city","state","country","number","mobile","mail",
+                                "created_at","updated_at","deleted_at"    
+]
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
+            customers_data = []
+            errors=[]
+            for _, row in df.iterrows():
+
+          
+           
+                try:
+                    state_instance = None
+                    if pd.notna(row['state']):
+                        state_instance = State.objects.filter(name=row['state']).first()
+
+                    phone_number = str(row['number']).strip() if pd.notna(row['number']) else None
+                    if not phone_number:
+                        errors.append({"row": _, "error": "Missing phone number"})
+                        continue 
+                    customer = Customers.objects.filter(phone=phone_number).first()
+                    if not customer:   
+                       
+                        customer=Customers(
+                        name=row['label'],
+                        phone=phone_number,
+                        alt_phone=row['mobile'] if pd.notna(row['mobile']) else None,  
+                        email=row['mail'] if pd.notna(row['mail']) else None,  
+                        address=row['adress'] if pd.notna(row['adress']) else None,
+                        zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
+                        city=row['city'] if pd.notna(row['city']) else None, 
+                        state=state_instance,
+                        created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
+                        manager=authUser
+                    )
+                        customer.save()
+                        customer_data = {
+                                    "customer_id": customer.id,
+                                    "customer_name": customer.name,
+                                    
+                                    "customer_phone": customer.phone,
+                                    "customer_alt_phone": customer.alt_phone,
+                                    "customer_email": customer.email,
+                                    "customer_address": customer.address,
+                                    "customer_zip_code": customer.zip_code,
+                                    "customer_city": customer.city,
+                                    "customer_state": customer.state.name if customer.state else None,
+                                    "customer_created_at": customer.created_at
+                                    
+                                    
+            }
+                        customers_data.append(customer_data)
+                except Exception as e:
+                    return Response({"error": f"Error processing customer data: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+
+                   
+                     
+                       
+                    
+                        
+                
+
+                # Prepare response data
+             
+                   
+                
+                
+
+            return Response({
+            "message": "Customers successfully uploaded",
+            "customers": customers_data,
+          
+        }, status=status.HTTP_201_CREATED)
+
+
+            
+               
+
+            
+            
+
+            
+            
+
+
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 

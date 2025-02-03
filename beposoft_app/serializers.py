@@ -109,8 +109,9 @@ class CustomerModelSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
-        if Customers.objects.filter(gst=data.get('gst')).exists():
-            raise serializers.ValidationError({'gst': 'GST number is already registered.'})
+        if 'gst' in data and data['gst']:  
+            if Customers.objects.filter(gst=data['gst']).exists():
+                raise serializers.ValidationError({'gst': 'GST number is already registered.'})
         
         if Customers.objects.filter(email=data.get('email')).exists():
             raise serializers.ValidationError({'email': 'Email is already registered.'})
@@ -438,7 +439,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
             'parcel_service', 'tracking_id', 'shipping_charge', 'status',
-            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family','actual_weight','parcel_amount'
+            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
         ]
 
     def to_representation(self, instance):
@@ -453,7 +454,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
 class WarehouseUpdateSerializers(serializers.ModelSerializer):
     class Meta :
         model = Warehousedata
-        fields = ['parcel_service','tracking_id','shipping_charge','actual_weight','parcel_amount']
+        fields = ['parcel_service','tracking_id','shipping_charge','actual_weight','parcel_amount','postoffice_date']
         
         
 # class OrderModelSerilizer(serializers.ModelSerializer):

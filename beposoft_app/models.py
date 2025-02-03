@@ -12,6 +12,7 @@ from datetime import datetime
 
 class State(models.Model):
     name = models.CharField(max_length=100)
+    province=models.CharField(max_length=30,null=True)
     
     def __str__(self):
         return self.name
@@ -50,6 +51,7 @@ class Family(models.Model):
 
 class WareHouse(models.Model):
     name=models.CharField(max_length=200)
+    address=models.CharField(max_length=500,null=True)
     location=models.CharField(max_length=200)
     unique_id = models.CharField(max_length=10, unique=True, blank=True, null=True)
 
@@ -171,7 +173,7 @@ class ProductAttribute(models.Model):
 
 class Customers(models.Model):
     gst = models.CharField(
-        unique=True,
+      
         max_length=15,
         null=True,
         blank=True,
@@ -179,13 +181,13 @@ class Customers(models.Model):
     )
     name = models.CharField(max_length=100)
     manager = models.ForeignKey(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=10,unique=True)
+    phone = models.CharField(max_length=10,null=True)
     alt_phone = models.CharField(max_length=10, null=True, blank=True)
-    email = models.EmailField(max_length=100,unique=True)
+    email = models.EmailField(max_length=100,null=True,blank=True)
     address = models.CharField(max_length=500,null=True)
-    zip_code =models.IntegerField()
-    city = models.CharField(max_length=100)
-    state = models.ForeignKey(State, on_delete=models.CASCADE)
+    zip_code =models.CharField(max_length=200,null=True)
+    city = models.CharField(max_length=100,null=True)
+    state = models.ForeignKey(State, on_delete=models.CASCADE,null=True,blank=True)
     comment = models.CharField(max_length=500,null=True, blank=True)
     created_at = models.DateField(auto_now_add=True)
 
@@ -231,9 +233,9 @@ class Shipping(models.Model):
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=500)
-    zipcode = models.IntegerField()
+    zipcode = models.CharField(max_length=300,null=True)
     city = models.CharField(max_length=100)
-    state = models.ForeignKey(State,on_delete=models.CASCADE)
+    state = models.ForeignKey(State,on_delete=models.CASCADE,null=True)
     country = models.CharField(max_length=100)
     phone = models.CharField(max_length=100)
     email = models.CharField(max_length=100)
@@ -371,10 +373,12 @@ class Order(models.Model):
     shipping_mode = models.CharField(max_length=100,null=True)
     shipping_charge = models.IntegerField(default=0,null=True)
     payment_status = models.CharField(max_length=20, choices=[
-        ('payed', 'payed'),
+        ('paid', 'paid'),
         ('COD', 'COD'),
         ('credit', 'credit'),
-    ], default='payed')
+        ('PENDING', 'PENDING'),
+        ('VOIDED','VOIDED')
+    ], default='paid')
     status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),
@@ -391,7 +395,7 @@ class Order(models.Model):
         ('Refunded', 'Refunded'),
         ('Rejected', 'Rejected'),
         ('Return', 'Return'),
-    ], default='Pending')
+    ], default='pending')
     total_amount = models.FloatField()
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="bank")
     note = models.TextField(null=True)
@@ -399,10 +403,10 @@ class Order(models.Model):
         ('Credit Card', 'Credit Card'),
         ('Debit Card', 'Debit Card'),
         ('PayPal', 'PayPal'),
-        ('Razorpay', 'Razorpay'),
+        ('1 Razorpay', '1 Razorpay'),
         ('Net Banking', 'Net Banking'),
         ('Bank Transfer', 'Bank Transfer'),
-        ('Cash on Delivery', 'Cash on Delivery'),
+        ('Cash on Delivery (COD)', 'Cash on Delivery (COD)'),
     ], default='Net Banking')
     updated_at = models.DateTimeField(auto_now=True) 
 
@@ -624,9 +628,11 @@ class Warehousedata(models.Model):
     parcel_amount=models.DecimalField(max_digits=10,decimal_places=2, null=True, blank=True,default=0.0)
     shipping_charge=models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
 
+
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE,null=True)
     status=models.CharField(max_length=30,null=True, blank=True)
     shipped_date=models.DateField(null=True, blank=True)
+    postoffice_date=models.DateField(null=True,blank=True)
     def __str__(self):
         parcel_service_name = self.parcel_service.name if self.parcel_service else "No Parcel Service"
         shipped_date_str = self.shipped_date.strftime("%Y-%m-%d") if self.shipped_date else "No Shipped Date"
