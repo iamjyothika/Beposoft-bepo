@@ -80,6 +80,7 @@ urlpatterns = [
 
     path('api/order/create/', CreateOrder.as_view(), name='create-order'),
     path('api/orders/', OrderListView.as_view(), name='orders'),
+    path('api/orders/update/<int:pk>/',OrderUpdateView.as_view()),
     
     path('api/order/<int:order_id>/items/', CustomerOrderItems.as_view(), name='order-items'),
     path('api/order/status/update/<int:pk>/', CustomerOrderStatusUpdate.as_view(), name='status-update-order'),

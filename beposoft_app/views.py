@@ -1328,6 +1328,31 @@ class OrderListView(BaseTokenView):
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class OrderUpdateView(BaseTokenView):
+    def put(self, request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            orders_change=get_object_or_404(Order, pk=pk)
+            serializer = OrderSerializer(orders_change,data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        
+
         
 
         
