@@ -1327,6 +1327,7 @@ class OrderListView(BaseTokenView):
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -2786,6 +2787,7 @@ class StatewiseSalesReport(APIView):
             return Response({"data": data}, status=status.HTTP_200_OK)
 
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
@@ -3878,17 +3880,17 @@ class FinancereportAPIView(BaseTokenView):
         
 class CustomerUploadView(BaseTokenView):
     parser_classes = (MultiPartParser, FormParser)
-    def post(self, request, *args, **kwargs):
 
-   
+    def post(self, request, *args, **kwargs):
         try:
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+
             if 'file' not in request.FILES:
                 return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Read the file based on its type (CSV or Excel)
+            # Read the file based on its type (CSV or Excel)
             excel_file = request.FILES['file']
             try:
                 file_extension = os.path.splitext(excel_file.name)[1].lower()
@@ -3901,19 +3903,20 @@ class CustomerUploadView(BaseTokenView):
             except Exception as e:
                 return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
             
-            required_columns = ["id","companies_id","ordre","label","adress","zipcode","city","state","country","number","mobile","mail",
-                                "created_at","updated_at","deleted_at"    
-]
+            required_columns = ["id", "companies_id", "ordre", "label", "adress", "zipcode", "city", "state", "country", "number", "mobile", "mail",
+                                "created_at", "updated_at", "deleted_at"]
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
+
             customers_data = []
-            errors=[]
+            errors = []
+
+            # ✅ Fetch existing phone numbers from the database
+            existing_phones = set(Customers.objects.values_list('phone', flat=True))
+            new_customers = {}  # Store unique customers to insert
 
             for index, row in df.iterrows():
-
-          
-           
                 try:
                     state_instance = None
                     if pd.notna(row['state']):
@@ -3925,93 +3928,88 @@ class CustomerUploadView(BaseTokenView):
                         errors.append({"row": index, "error": "Missing phone number"})
                         continue  # Skip row
 
-                    # ✅ Check if customer already exists
-                    customer = Customers.objects.filter(phone=phone_number).first()
-                   
-                   
-
-                   
-                    if not customer: 
-                        customer = Customers(
-                            name=row['label'],
-                            phone=phone_number,
-                            alt_phone=row['mobile'] if pd.notna(row['mobile']) else None,
-                            email=row['mail'] if pd.notna(row['mail']) else None,
-                            address=row['adress'] if pd.notna(row['adress']) else None,
-                            zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
-                            city=row['city'] if pd.notna(row['city']) else None,
-                            
-                            state=state_instance,
-                            created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
-                            manager=authUser
-
-                       
-                       
+                    # ✅ Check if the customer already exists in the database
+                    if phone_number in existing_phones:
+                        print(f"❌ Customer already exists in database: {phone_number}")
+                        continue  # ✅ Skip if already exists in the database
+                    
+                    # ✅ Check if customer is already added in this batch (to prevent duplicate creation)
+                    if phone_number in new_customers:
+                        print(f"❌ Duplicate phone number in this batch: {phone_number}")
+                        continue  # ✅ Skip if already added in this batch
+                    
+                    # ✅ If customer does not exist, add to batch
+                    customer = Customers(
+                        name=row['label'],
+                        phone=phone_number,
+                        alt_phone=row['mobile'] if pd.notna(row['mobile']) else None,
+                        email=row['mail'] if pd.notna(row['mail']) else None,
+                        address=row['adress'] if pd.notna(row['adress']) else None,
+                        zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
+                        city=row['city'] if pd.notna(row['city']) else None,
+                        state=state_instance,
+                        created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
+                        manager=authUser
                     )
-                        customer.save()
-                        customer_data = {
-                                    "customer_id": customer.id,
-                                    "customer_name": customer.name,
-                                    
-                                    "customer_phone": customer.phone,
-                                    "customer_alt_phone": customer.alt_phone,
-                                    "customer_email": customer.email,
-                                    "customer_address": customer.address,
-                                    "customer_zip_code": customer.zip_code,
-                                    "customer_city": customer.city,
-                                    "customer_state": customer.state.name if customer.state else None,
-                                    "customer_created_at": customer.created_at
-                                    
-                                    
-            }
-                        customers_data.append(customer_data)
-                        print(f"✅ Customer Created: {customer_data}") 
+                    customer.save()
+
+                    # ✅ Add new customer to dictionary and database lookup
+                    existing_phones.add(phone_number)  # Prevents adding again in the future
+                    new_customers[phone_number] = customer
+
+                    customer_data = {
+                        "customer_id": customer.id,
+                        "customer_name": customer.name,
+                        "customer_phone": customer.phone,
+                        "customer_alt_phone": customer.alt_phone,
+                        "customer_email": customer.email,
+                        "customer_address": customer.address,
+                        "customer_zip_code": customer.zip_code,
+                        "customer_city": customer.city,
+                        "customer_state": customer.state.name if customer.state else None,
+                        "customer_created_at": customer.created_at
+                    }
+                    customers_data.append(customer_data)
+                    print(f"✅ Customer Created: {customer_data}") 
+
                 except Exception as e:
                     errors.append({"row": index, "error": str(e)})
                     print(f"❌ Error processing row {index}: {str(e)}")
                     continue 
-                    
-                    
 
-
-
-
-
-
-
-
-
-
-                   
-                     
-                       
-                    
-                        
-                
-
-                # Prepare response data
-             
-                   
-                
-                
-
+            # ✅ Return Response
             return Response({
-            "message": "Customers successfully uploaded",
-            "customers": customers_data,
-          
-        }, status=status.HTTP_201_CREATED)
-
-
-            
-               
-
-            
-            
-
-            
-            
-
+                "message": "Customers successfully uploaded",
+                "customers": customers_data,
+                "errors": errors
+            }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            print(e)
+            return Response({
+                "status": "error",
+                "message": "An error occurred",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
