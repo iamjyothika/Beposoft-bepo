@@ -659,7 +659,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     customer = CustomerSerilizers(read_only=True)
     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
     customerID = serializers.IntegerField(source="customer.pk")
-    items = OrderItemModelSerializer(read_only = True,  many=True)
+    # items = OrderItemModelSerializer(read_only = True,  many=True)
     warehouse=WarehousedataSerializer(many=True,read_only=True)
     company = CompanyDetailsSerializer(read_only=True)
     recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
