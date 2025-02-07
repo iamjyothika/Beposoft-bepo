@@ -408,15 +408,12 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
  
         
         # Print the prices for debugging purposes
-        print("Product selling price: ", obj.product.selling_price)
-        print("Product retail price: ", obj.product.retail_price)
-        
+      
         # Determine which price to return based on the user's designation
         if manage_staff_designation in ['BDO', 'BDM']:
-            print("Returning selling price:", obj.product.selling_price)
             return obj.product.selling_price  # Return the selling price if user is BDO or BDM
         else:
-            print("Returning retail price:", obj.product.retail_price)
+          
             return obj.product.retail_price
  
     

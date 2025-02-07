@@ -27,6 +27,7 @@ import os
 from django.utils import timezone
 from django.shortcuts import render
 from datetime import date
+from rest_framework.pagination import PageNumberPagination
 
 
 
@@ -1310,26 +1311,36 @@ class CreateOrder(BaseTokenView):
         except Exception as e:
             logger.error(f"Unexpected error during order creation: {e}", exc_info=True)
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 class OrderListView(BaseTokenView):
     def get(self, request):
         try:
+ 
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            
+ 
+            paginator = PageNumberPagination()
+            paginator.page_size = 10  # Adjust based on your needs
+            orders = Order.objects.all().select_related('customer', 'billing_address', 'state', 'company')  # Optimize query
+            
+      
+            if not orders.exists():
+                return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            orders = Order.objects.all()
-            serializer = OrderModelSerilizer(orders, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            result_page = paginator.paginate_queryset(orders, request)
+            serializer = OrderModelSerilizer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except KeyError as e:
+            return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            print(e)
+            print(f"Error: {e}")
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class OrderUpdateView(BaseTokenView):
