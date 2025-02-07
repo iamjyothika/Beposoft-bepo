@@ -2345,8 +2345,6 @@ class GRVaddView(BaseTokenView):
                 {"status": "error", "message": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
-
 
 class GRVGetViewById(BaseTokenView):
     def get(self, request, pk):
@@ -3238,10 +3236,6 @@ class OrderBulkUploadAPIView(BaseTokenView):
 
 
 
-
-        
-    
-    
 class ProductStockReportView(BaseTokenView):
     def get(self, request):
         try:
@@ -4020,7 +4014,4 @@ class CustomerUploadView(BaseTokenView):
 
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-
+        
