@@ -383,25 +383,40 @@ class UserCustomerAddingView(BaseTokenView):
             return Response({"status": "error", "message": "An internal server error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class CustomerPagination(PageNumberPagination):
+    page_size = 10  # ✅ Default customers per page
+    page_size_query_param = 'page_size'  # ✅ Allows dynamic page size
+    max_page_size = 1000  # ✅ Limits large queries
 
-            
 class CustomerView(APIView):
     def get(self, request):
         try:
-            # authUser, error_response = self.get_user_from_token(request)
-            # if error_response:
-            #     return error_response
-                
-            customers = Customers.objects.all()
-            serializer = CustomerModelSerializerView(customers, many=True)
-            return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
+            # ✅ Apply Pagination
+            paginator = CustomerPagination()
+            customers = Customers.objects.all().order_by('id')
             
-        except User.DoesNotExist:
-            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+            # ✅ Check if there are no customers
+            if not customers.exists():
+                return Response({"status": "error", "message": "Customers not found"}, status=status.HTTP_404_NOT_FOUND)
+
+            # ✅ Paginate QuerySet
+            result_page = paginator.paginate_queryset(customers, request)
+            serializer = CustomerModelSerializerView(result_page, many=True)
+
+            # ✅ Return Paginated Response
+            return paginator.get_paginated_response({
+                "data": serializer.data,
+                "message": "Customers retrieved successfully"
+            })
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Customers not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class CustomerUpdateView(BaseTokenView):
