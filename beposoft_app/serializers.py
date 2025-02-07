@@ -391,38 +391,14 @@ class PaymentRecieptsViewSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderItemModelSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(source="product.image")
-    name = serializers.CharField(source="product.name")
-    actual_price = serializers.SerializerMethodField()
-    exclude_price = serializers.SerializerMethodField()
+  
     
     
     
     class Meta:
         model = OrderItem
         fields = "__all__"
-    def get_actual_price(self, obj):
-        # Retrieve the manage_staff_designation from the context
-        order = obj.order  # Access the order related to this order item
-        manage_staff_designation = order.manage_staff.designation
- 
-        
-        # Print the prices for debugging purposes
-      
-        # Determine which price to return based on the user's designation
-        if manage_staff_designation in ['BDO', 'BDM']:
-            return obj.product.selling_price  # Return the selling price if user is BDO or BDM
-        else:
-          
-            return obj.product.retail_price
- 
     
-    # def get_actual_price(self, obj):
-    #     # Calculate the actual price based on the product type
-    #     return int(obj.product.selling_price) if obj.product.selling_price is not None else None
-    
-    def get_exclude_price(self, obj):
-        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
     
 
 
@@ -659,7 +635,7 @@ class OrderModelSerilizer(serializers.ModelSerializer):
     customer = CustomerSerilizers(read_only=True)
     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
     customerID = serializers.IntegerField(source="customer.pk")
-    # items = OrderItemModelSerializer(read_only = True,  many=True)
+    items = OrderItemModelSerializer(read_only = True,  many=True)
     warehouse=WarehousedataSerializer(many=True,read_only=True)
     company = CompanyDetailsSerializer(read_only=True)
     recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
