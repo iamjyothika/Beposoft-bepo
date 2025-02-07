@@ -27,16 +27,20 @@ SECRET_KEY = 'django-insecure-a0e4^&1w3e78i(lrlq*5$vvwt9ekdp&1r^4^$qjt050b(g$bs4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','http://65.1.147.199', 'localhost','*']
+ALLOWED_HOSTS = ['127.0.0.1','http://65.1.147.199', 'localhost','*',"https://beposoftnew-azure.vercel.app/"]
 
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    "http://65.1.147.199"
+    "http://65.1.147.199",
+    "https://beposoftnew-azure.vercel.app",
+
 ]
 CSRF_TRUSTED_ORIGINS = [
     'http://65.1.147.199',
     "http://localhost:5173",
+    "https://beposoftnew-azure.vercel.app",
+   
         # Your IP or domain
 ]
 
