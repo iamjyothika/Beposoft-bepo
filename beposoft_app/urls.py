@@ -179,6 +179,10 @@ urlpatterns = [
     path('api/attendance/update/<int:pk>/', AttendanceUpdateAPIView.as_view(), name='attendance_update'),
     path('api/attendance/report/all/', AllStaffAttendanceReportAPIView.as_view(), name='all_staff_attendance_report'),
     path('api/attendance/absence/<int:staff_id>/', StaffAttendanceAbsenceAPIView.as_view(), name='attendance_absence'),
+
+    path('api/shopify/orders/', FetchOrdersView.as_view(), name="fetch_orders"),
+
+
 ]
 
 

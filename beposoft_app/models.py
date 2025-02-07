@@ -172,16 +172,21 @@ class ProductAttribute(models.Model):
 
 
 class Customers(models.Model):
+    CUSTOMER_STATUS = [
+        ('customer', 'customer'),
+        ('warehouse', 'warehouse'),
+    ]
     gst = models.CharField(
       
         max_length=15,
         null=True,
         blank=True,
+        unique=True,
         validators=[validate_gst],  
     )
     name = models.CharField(max_length=100)
     manager = models.ForeignKey(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=10,null=True)
+    phone = models.CharField(max_length=10,null=True,unique=True)
     alt_phone = models.CharField(max_length=10, null=True, blank=True)
     email = models.EmailField(max_length=100,null=True,blank=True)
     address = models.CharField(max_length=500,null=True)
@@ -190,6 +195,7 @@ class Customers(models.Model):
     state = models.ForeignKey(State, on_delete=models.CASCADE,null=True,blank=True)
     comment = models.CharField(max_length=500,null=True, blank=True)
     created_at = models.DateField(auto_now_add=True)
+    customer_status=models.CharField(max_length=200,choices=CUSTOMER_STATUS,default='customer')
 
     def __str__(self):
         return self.name
@@ -209,7 +215,7 @@ class Company(models.Model):
     country = models.CharField(max_length=100)
     phone = models.CharField(max_length=10)
     email = models.EmailField(max_length=100)
-    web_site = models.URLField()
+    web_site = models.URLField(null=True)
     prefix = models.CharField(max_length=5, unique=True, help_text="Unique prefix for invoice numbers")
 
     def __str__(self):
