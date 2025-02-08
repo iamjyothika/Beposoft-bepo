@@ -384,7 +384,7 @@ class UserCustomerAddingView(BaseTokenView):
 
 
 class CustomerPagination(PageNumberPagination):
-    page_size = 500  # ✅ Default customers per page
+    page_size = 100  # ✅ Default customers per page
     page_size_query_param = 'page_size'  # ✅ Allows dynamic page size
     max_page_size = 5000 # ✅ Limits large queries
 
@@ -590,6 +590,7 @@ class ProductCreateView(BaseTokenView):
         except KeyError as e:
             return Response({"message": f"Missing required field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProductListView(BaseTokenView):
