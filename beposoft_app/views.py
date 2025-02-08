@@ -30,7 +30,7 @@ from datetime import date
 from rest_framework.pagination import PageNumberPagination
 
 
-
+logger = logging.getLogger(__name__)
 
 
 class UserRegistrationAPIView(APIView):
@@ -570,6 +570,8 @@ class ProductCreateView(BaseTokenView):
             request.data['created_user'] = authUser.pk
 
             # Validate and save product
+            logger.info(f"Received data: {request.data}")  # ✅ Log request data
+            print(f"Received data: {request.data}") 
             serializer = ProductsSerializer(data=request.data)
             if serializer.is_valid():
                 product = serializer.save()
