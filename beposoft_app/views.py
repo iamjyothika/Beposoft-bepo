@@ -384,7 +384,7 @@ class UserCustomerAddingView(BaseTokenView):
 
 
 class CustomerPagination(PageNumberPagination):
-    page_size = 100  # ✅ Default customers per page
+    page_size = 50 # ✅ Default customers per page
     page_size_query_param = 'page_size'  # ✅ Allows dynamic page size
     max_page_size = 5000 # ✅ Limits large queries
 
