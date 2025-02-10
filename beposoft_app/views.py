@@ -544,46 +544,60 @@ class FamilyUpdateView(BaseTokenView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-
 class ProductCreateView(BaseTokenView):
     @transaction.atomic
     def post(self, request):
         try:
-            with transaction.atomic():  # ✅ Ensure rollback on failure
-                authUser, error_response = self.get_user_from_token(request)
-                if error_response:
-                    return error_response
+            # Authenticate user
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
+            # Extract and validate family IDs
             family_ids = request.data.get('family')
-            if not isinstance(family_ids, list):
-                return Response({"message": "Family must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+            # print(family_ids)
+            if not family_ids:
+                return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
             families = Family.objects.filter(pk__in=family_ids)
             if families.count() != len(family_ids):
                 invalid_ids = set(family_ids) - set(families.values_list('id', flat=True))
                 return Response({"message": "Invalid family IDs", "invalid_ids": list(invalid_ids)}, status=status.HTTP_400_BAD_REQUEST)
+                
 
-            mutable_data = request.data.copy()
-            mutable_data['created_user'] = authUser.pk
+            # Add created_user to request data
+            request.data['created_user'] = authUser.pk
 
-            serializer = ProductsSerializer(data=mutable_data)
+            # Validate and save product
+            logger.info(f"Received data: {request.data}")  # ✅ Log request data
+            print(f"Received data: {request.data}") 
+            serializer = ProductsSerializer(data=request.data)
             if serializer.is_valid():
                 product = serializer.save()
-                product.family.set(families)  # ✅ Set ManyToManyField correctly
+                product.family.set(families)
 
-                return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
-
-            return Response({"message": "Invalid data", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print(f"Error: {str(e)}")  # ✅ Debug print
-        return Response({
-            "status": "error",
-            "message": "An error occurred",
-            "errors": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    
+                 
+                print(serializer.data)
+                
+                 # Associate families with product
+            return Response({"message": "Product added successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+           
+        
+   
+                
             
+           
+
+        except KeyError as e:
+            return Response({"message": f"Missing required field: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
 
 class ProductListView(BaseTokenView):
     def get(self, request):
@@ -1402,6 +1416,7 @@ class CustomerOrderItems(BaseTokenView):
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
