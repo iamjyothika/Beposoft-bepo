@@ -87,7 +87,7 @@ class UserLoginAPIView(APIView):
                         'email': customer.email,
                         'name':customer.name,
                         'exp': expiration_time,
-                        "active": customer.designation,
+                        "active": customer.department_id.name,
                         
                         'iat': datetime.utcnow(),
                        
@@ -100,7 +100,7 @@ class UserLoginAPIView(APIView):
                         "message": "Login successful",
                         "token": token,
                         'name': customer.name,
-                        "active": customer.designation
+                        "active": customer.department_id.name
                     }
 
                     # Set JWT token in cookies
@@ -674,6 +674,7 @@ class ProductUpdateView(BaseTokenView):
             product = self.get_product(pk)
 
             serializer = ProductSerializerView(product)
+            print(serializer.data)
             return Response({"message": "Product fetched successfully", "data": serializer.data}, status=status.HTTP_200_OK)
                             
         except Exception as e:
@@ -706,7 +707,11 @@ class ProductUpdateView(BaseTokenView):
             serializer = ProductsSerializer(product, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                
                 return Response({"message": "Product updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
+    
+
+              
             return Response({"message": "Validation error", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
@@ -1166,6 +1171,11 @@ class VariantProductCreate(BaseTokenView):
                 return Response({"message": "Invalid attributes format"}, status=status.HTTP_400_BAD_REQUEST)
 
             images = request.FILES.getlist('images')
+             
+            print(f"Product ID: {product_id}")
+            print(f"Attributes: {attributes}")
+            print(f"Image Path:{images}")
+
 
             # Fetch product
             product_instance = Products.objects.filter(pk=product_id).first()
@@ -1333,6 +1343,8 @@ class CreateOrder(BaseTokenView):
         except Exception as e:
             logger.error(f"Unexpected error during order creation: {e}", exc_info=True)
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class OrderListView(BaseTokenView):
     def get(self, request):
         try:
@@ -1343,7 +1355,15 @@ class OrderListView(BaseTokenView):
             
  
             paginator = PageNumberPagination()
-            paginator.page_size = 10  # Adjust based on your needs
+            paginator.page_size = 10 
+            invoice_created_count = Order.objects.filter(status="Invoice Created").count()
+            invoice_approved_count = Order.objects.filter(status="Invoice Approved").count()
+            
+
+
+
+            
+             # Adjust based on your needs
             orders = Order.objects.all().select_related('customer', 'billing_address', 'state', 'company')  # Optimize query
             
       
@@ -1352,7 +1372,21 @@ class OrderListView(BaseTokenView):
 
             result_page = paginator.paginate_queryset(orders, request)
             serializer = OrderModelSerilizer(result_page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+            response_data = {
+                "invoice_created_count": invoice_created_count,
+                "invoice_approved_count": invoice_approved_count,
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+
+
+            
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -2053,6 +2087,34 @@ class PerfomaInvoiceDetailView(BaseTokenView):
         
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PerformaOrderStaff(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            perfoma_orders = PerfomaInvoiceOrder.objects.filter(manage_staff=authUser)
+            serializer = PerfomaInvoiceOrderSerializers(perfoma_orders, many=True)
+
+            return Response({"message": "Perfoma orders successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+
+
+
         
         
 class CreateCompnayDetailsView(BaseTokenView):

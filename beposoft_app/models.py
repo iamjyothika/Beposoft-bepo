@@ -287,12 +287,8 @@ class Products(models.Model):
     image = models.ImageField(upload_to='images/', null=True)
     exclude_price = models.FloatField(editable=False) 
     selling_price=models.FloatField(default=0.0,null=True)
-    
     landing_cost=models.FloatField(null=True)
     retail_price=models.FloatField(null=True)
-
-   
-  
     stock = models.IntegerField(default=0)
     color = models.CharField(max_length=100, null=True, blank=True)
     size = models.CharField(max_length=100, null=True, blank=True)
@@ -340,6 +336,7 @@ class SingleProducts(models.Model) :
 
     def __str__(self):
         return f"{self.product.name}"
+    
 
 
 

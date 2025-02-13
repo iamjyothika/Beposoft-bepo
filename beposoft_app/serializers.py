@@ -196,7 +196,7 @@ class FamilySerializer(serializers.ModelSerializer):
     
 class ProductSingleviewSerializres(serializers.ModelSerializer):
     variantIDs = serializers.SerializerMethodField()
-    images = SingleProductSerializer(read_only=True,many=True)
+    images = serializers.SerializerMethodField()
 
     class Meta:
         model = Products
@@ -216,6 +216,19 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
             variant_list = []
 
             for variant in variants:
+                if variant.image:
+                    selected_image = variant.image.url  # Use the updated image directly
+                else:
+                    # Fetch images for each variant from SingleProducts
+                    variant_images = SingleProducts.objects.filter(product=variant.pk)
+                    image_urls = [img.image.url for img in variant_images if img.image]
+
+                    # Use first image from SingleProducts if no variant image is set
+                    selected_image = image_urls[0] if image_urls else None  
+
+
+               
+
                 if variant.name not in seen_attributes:
                     seen_attributes.add(variant.name)
                     variant_list.append({
@@ -223,7 +236,8 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "groupID": variant.groupID,
                         "name": variant.name if variant.name else None,  
                         "stock": variant.stock,
-                        "image": variant.image.url if variant.image else None,  # Image URL handling
+                        
+                        "image": selected_image, # Image URL handling
                         "color":variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
                         "selling_price": variant.selling_price , # Selling price field
@@ -233,46 +247,91 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
 
             return variant_list
         return [] 
+    
+    def get_images(self, obj):
+        """Fetch images dynamically using related_name."""
+        return [img.image.url for img in obj.images.all()]  
+    
+    
+        
 
 class ProductSerializerView(serializers.ModelSerializer):
     variantIDs = serializers.SerializerMethodField()
-    images = SingleProductSerializer(read_only=True,many=True)
+    images = serializers.SerializerMethodField()  # Fetch images dynamically
+
     warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
     
 
     class Meta:
         model = Products
         fields = "__all__"
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+    # Fetch the main product with the same groupID
+        main_product = Products.objects.filter(groupID=instance.groupID).order_by('id').first()
+
+        if instance.type == 'variant' and main_product:
+            if data.get('landing_cost') is None:
+               data['landing_cost'] = main_product.landing_cost
+            if data.get('retail_price') is None:
+               data['retail_price'] = main_product.retail_price
+
+        return data      
+
+   
+
+    
+       
+       
+    
     
     def get_variantIDs(self, obj):
+        
+
         """
         Fetch variant details for the same groupID, including images.
         """
         if obj.type == 'variant':  # Ensure correct check for 'variant'
             variants = Products.objects.filter(groupID=obj.groupID)
             variant_list = []
-
             for variant in variants:
-                # Fetch images for each variant
-                variant_images = SingleProducts.objects.filter(product=variant.pk)
-                image_urls = [img.image.url for img in variant_images if img.image]
+                # If the product itself has an updated image, use it.
+                if variant.image:
+                    selected_image = variant.image.url  
+                else:
+                    # Fetch images for each variant from SingleProducts
+                    variant_images = SingleProducts.objects.filter(product=variant.pk)
+                    image_urls = [img.image.url for img in variant_images if img.image]
 
+                    # Use the first available image from SingleProducts if product.image is missing
+                    selected_image = image_urls[0] if image_urls else None 
+
+
+          
+                # Fetch images for each variant
+                
                 variant_list.append({
                     "id": variant.pk,
                     "groupID": variant.groupID,
                     "name": variant.name,
-                    "image": image_urls[0] if image_urls else None,  # Use the first image or None
+                    "image":selected_image,  # Use the first image or None
                     "price": variant.selling_price,
                     "color": variant.color if variant.color else None,
                     "size": variant.size if variant.size else None,
                     "stock": variant.stock,
                     "created_user": variant.created_user.name,
                     "warehouse_name": variant.warehouse.name if variant.warehouse else None,
+                    
                    
                 })
 
             return variant_list
         return []
+    def get_images(self, obj):
+        """Fetch images dynamically using the related name 'images'."""
+        return [img.image.url for img in obj.images.all()]  
     
 
     
@@ -520,6 +579,8 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
+    customer=serializers.CharField(source="customer.name")
+    staffname=serializers.CharField(source="manage_staff.name")
     class Meta :
         model = PerfomaInvoiceOrder
         fields = '__all__'
