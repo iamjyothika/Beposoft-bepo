@@ -579,8 +579,8 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
-    customer=serializers.CharField(source="customer.name")
-    staffname=serializers.CharField(source="manage_staff.name")
+    customermame=serializers.CharField(source="customer.name",read_only=True)
+    staffname=serializers.CharField(source="manage_staff.name",read_only=True)
     class Meta :
         model = PerfomaInvoiceOrder
         fields = '__all__'

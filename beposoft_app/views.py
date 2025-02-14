@@ -383,42 +383,22 @@ class UserCustomerAddingView(BaseTokenView):
             return Response({"status": "error", "message": "An internal server error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class CustomerPagination(PageNumberPagination):
-    page_size = 50 # ✅ Default customers per page
-    page_size_query_param = 'page_size'  # ✅ Allows dynamic page size
-    max_page_size = 5000 # ✅ Limits large queries
-
-class CustomerView(APIView):
+class CustomerView(BaseTokenView):
     def get(self, request):
         try:
-            # ✅ Apply Pagination
-            paginator = CustomerPagination()
-            customers = Customers.objects.all().order_by('id')
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+                
+            customers = Customers.objects.all()
+            serializer = CustomerModelSerializerView(customers, many=True)
+            return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
             
-            # ✅ Check if there are no customers
-            if not customers.exists():
-                return Response({"status": "error", "message": "Customers not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            # ✅ Paginate QuerySet
-            result_page = paginator.paginate_queryset(customers, request)
-            serializer = CustomerModelSerializerView(result_page, many=True)
-
-            # ✅ Return Paginated Response
-            return paginator.get_paginated_response({
-                "data": serializer.data,
-                "message": "Customers retrieved successfully"
-            })
-
-        except ObjectDoesNotExist:
-            return Response({"status": "error", "message": "Customers not found"}, status=status.HTTP_404_NOT_FOUND)
-        
-        except DatabaseError:
-            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except User.DoesNotExist:
+            return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
         
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class CustomerUpdateView(BaseTokenView):
     
     def get_customer(self, pk):
@@ -1348,56 +1328,21 @@ class CreateOrder(BaseTokenView):
 class OrderListView(BaseTokenView):
     def get(self, request):
         try:
- 
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            
- 
-            paginator = PageNumberPagination()
-            paginator.page_size = 10 
-            invoice_created_count = Order.objects.filter(status="Invoice Created").count()
-            invoice_approved_count = Order.objects.filter(status="Invoice Approved").count()
-            
 
-
-
-            
-             # Adjust based on your needs
-            orders = Order.objects.all().select_related('customer', 'billing_address', 'state', 'company')  # Optimize query
-            
-      
-            if not orders.exists():
-                return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
-
-            result_page = paginator.paginate_queryset(orders, request)
-            serializer = OrderModelSerilizer(result_page, many=True)
-            response_data = {
-                "invoice_created_count": invoice_created_count,
-                "invoice_approved_count": invoice_approved_count,
-                "count": paginator.page.paginator.count,
-                "next": paginator.get_next_link(),
-                "previous": paginator.get_previous_link(),
-                "results": serializer.data
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
-
-
-
-
-
-            
+            orders = Order.objects.all()
+            serializer = OrderModelSerilizer(orders, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except KeyError as e:
-            return Response({"status": "error", "message": f"Missing field: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            print(f"Error: {e}")
+            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class OrderUpdateView(BaseTokenView):
     def put(self, request,pk):
@@ -2016,11 +1961,12 @@ class CreatePerfomaInvoice(BaseTokenView):
                 product = get_object_or_404(Products, pk=item_data.product.pk)
 
                 # Convert values to Decimal for consistency
-                quantity = Decimal(item_data.quantity)
-                selling_price = Decimal(item_data.product.selling_price)
-                discount = Decimal(item_data.discount or 0)
+                quantity = Decimal(item_data.quantity or 0)
+                selling_price = Decimal(item_data.product.selling_price or 0)
+                discount = Decimal(item_data.discount or 0)  # Handles None discount
                 tax = Decimal(item_data.product.tax or 0)
                 rate = Decimal(item_data.product.selling_price or 0)
+               
 
                 
 
