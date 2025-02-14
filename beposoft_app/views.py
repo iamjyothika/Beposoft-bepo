@@ -2526,6 +2526,8 @@ class InvoiceReportView(BaseTokenView):
             for staff in staff_details:
                 # Fetch total orders handled by this staff
                 staff_orders = orders.filter(manage_staff=staff)
+                staff_total_bills = staff_orders.count()
+                staff_total_amount = staff_orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
 
                 # Collect detailed information for all orders handled by this staff
                 staff_orders_details = []
@@ -2548,13 +2550,14 @@ class InvoiceReportView(BaseTokenView):
                     'id': staff.pk,
                     'name': staff.name,
                     'family': staff.family.name if staff.family else None,
+                    'total_bills': staff_total_bills,
+                    'total_amount': staff_total_amount,
                     'orders_details': staff_orders_details
                 })
 
             return Response({
                 "status": "success",
-                "total_bills": total_bills,
-                "total_amount": total_amount,
+              
                 "data": staff_info,
             })
 
