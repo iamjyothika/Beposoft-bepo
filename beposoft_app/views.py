@@ -2515,6 +2515,8 @@ class InvoiceReportView(BaseTokenView):
 
             # Filter orders for the given date
             orders = Order.objects.filter(order_date=date)
+            total_bills = orders.count()
+            total_amount = orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
 
             # Get staff details and their order counts
             staff_ids = orders.values_list('manage_staff', flat=True).distinct()
@@ -2551,6 +2553,8 @@ class InvoiceReportView(BaseTokenView):
 
             return Response({
                 "status": "success",
+                "total_bills": total_bills,
+                "total_amount": total_amount,
                 "data": staff_info,
             })
 
