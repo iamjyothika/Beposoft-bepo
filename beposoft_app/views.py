@@ -1075,6 +1075,39 @@ class ShippingCreateView(BaseTokenView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ShippingDetailView(BaseTokenView):
+    def get(self, request, address_id):
+        try:
+            # Authenticate user
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Fetch the shipping address by ID
+            shipping_address = Shipping.objects.get(pk=address_id)
+            
+            # Serialize the shipping address
+            serializer = ShippingSerializers(shipping_address)
+
+            return Response({
+                "message": "Shipping address retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Shipping.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "Shipping address not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            print(e)
+            return Response({
+                "status": "error",
+                "message": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
         
 
 
@@ -1333,8 +1366,15 @@ class OrderListView(BaseTokenView):
                 return error_response
 
             orders = Order.objects.all()
+            invoice_created_count = orders.filter(status='Invoice Created').count()
+            invoice_approved_count = orders.filter(status='Invoice Approved').count()
             serializer = OrderModelSerilizer(orders, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            response_data = {
+                "invoice_created_count": invoice_created_count,
+                "invoice_approved_count": invoice_approved_count,
+                "results": serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)

@@ -147,6 +147,7 @@ class CustomerModelSerializer(serializers.ModelSerializer):
 
 class CustomerModelSerializerView(serializers.ModelSerializer):
     state = serializers.CharField(source='state.name', read_only=True)
+    state_id = serializers.IntegerField(source='state.pk', read_only=True)
     manager = serializers.CharField(source ='manager.name',read_only=True)
     family = serializers.CharField(source ='manager.family.pk',read_only=True)
     class Meta:

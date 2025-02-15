@@ -61,6 +61,7 @@ urlpatterns = [
 
     path('api/add/customer/address/<int:pk>/',ShippingCreateView.as_view(),name="add-customer-address"),# completed
     path('api/update/cutomer/address/<int:pk>/',CustomerShippingAddressUpdate.as_view(),name="address-update"), 
+    path('api/address/get/<int:address_id>/',ShippingDetailView.as_view()),
 
 
     path('api/add/product/variant/',VariantProductCreate.as_view(),name="add-variant-product"),# completed
