@@ -580,11 +580,20 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
-    customermame=serializers.CharField(source="customer.name",read_only=True)
-    staffname=serializers.CharField(source="manage_staff.name",read_only=True)
+  
     class Meta :
         model = PerfomaInvoiceOrder
         fields = '__all__'
+
+class PerformaOrderListSerilaizer(serializers.ModelSerializer):
+    customermame=serializers.CharField(source="customer.name",read_only=True)
+    staffname=serializers.CharField(source="manage_staff.name",read_only=True) 
+    class Meta:
+        model=PerfomaInvoiceOrder
+        fields='__all__'       
+
+
+
         
 class PerfomaInvoiceProducts(serializers.ModelSerializer):
     images =  serializers.ImageField(source="product.image")

@@ -2083,7 +2083,7 @@ class PerformaOrderStaff(BaseTokenView):
                 return error_response
 
             perfoma_orders = PerfomaInvoiceOrder.objects.filter(manage_staff=authUser)
-            serializer = PerfomaInvoiceOrderSerializers(perfoma_orders, many=True)
+            serializer = PerformaOrderListSerilaizer(perfoma_orders, many=True)
 
             return Response({"message": "Perfoma orders successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
         
