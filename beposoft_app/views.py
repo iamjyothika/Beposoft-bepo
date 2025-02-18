@@ -384,21 +384,24 @@ class UserCustomerAddingView(BaseTokenView):
 
 
 class CustomerView(BaseTokenView):
+   
     def get(self, request):
         try:
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-                
+
             customers = Customers.objects.all()
-            serializer = CustomerModelSerializerView(customers, many=True)
+            serializer = CustomerModelSerializerLimited(customers, many=True)
             return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
-            
+
         except User.DoesNotExist:
             return Response({"status": "error", "message": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        
+
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 class CustomerUpdateView(BaseTokenView):
     
     def get_customer(self, pk):

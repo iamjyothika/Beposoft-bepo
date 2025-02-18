@@ -152,7 +152,12 @@ class CustomerModelSerializerView(serializers.ModelSerializer):
     family = serializers.CharField(source ='manager.family.pk',read_only=True)
     class Meta:
         model = Customers
-        fields = "__all__"  
+        fields = "__all__"
+
+class CustomerModelSerializerLimited(serializers.ModelSerializer):
+    class Meta:
+        model = Customers
+        fields = ['name', 'email', 'created_at']          
 
 
 
