@@ -113,16 +113,21 @@ WSGI_APPLICATION = 'beposoft.wsgi.application'
 
 
 
+
 DATABASES = {  
     'default': {  
         'ENGINE': 'django.db.backends.mysql',  
-        'NAME': 'beposoft_db',  
-        'USER': 'beposoft',  
-        'PASSWORD': 'bepoindia',  
-        'HOST': 'database-2.cje486w6gaav.ap-south-1.rds.amazonaws.com',  
+        'NAME': 'beposoft',  
+        'USER': 'beposoftuser',  
+        'PASSWORD':'m6,#-,ObIw~+',
+        'HOST': 'p3plzcpnl505336.prod.phx3.secureserver.net',  
         'PORT': '3306', 
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+        }
+        
     }  
-}  
+} 
 
 
 

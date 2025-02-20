@@ -155,6 +155,7 @@ class CustomerModelSerializerView(serializers.ModelSerializer):
         fields = "__all__"
 
 class CustomerModelSerializerLimited(serializers.ModelSerializer):
+   
     class Meta:
         model = Customers
         fields = ['id','name', 'email', 'created_at','manager','phone']          
