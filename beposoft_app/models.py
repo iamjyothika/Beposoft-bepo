@@ -523,6 +523,7 @@ class PerfomaInvoiceOrder(models.Model):
     ]
 
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
+    warehouses_obj=models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True)
     company = models.CharField(max_length=100, choices=COMPANY_CHOICES, default='MICHEAL IMPORT EXPORT PVT LTD')
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="perfoma_customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
@@ -533,11 +534,6 @@ class PerfomaInvoiceOrder(models.Model):
     code_charge = models.IntegerField(default=0,null=True)
     shipping_mode = models.CharField(max_length=100,null=True)
     shipping_charge = models.IntegerField(default=0,null=True)
-    payment_status = models.CharField(max_length=20, choices=[
-        ('payed', 'payed'),
-        ('COD', 'COD'),
-        ('credit', 'credit'),
-    ], default='payed')
     
     
     
@@ -557,18 +553,9 @@ class PerfomaInvoiceOrder(models.Model):
         ('Return', 'Return'),
     ], default='Pending')
     total_amount = models.FloatField()
-    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="perfoma_bank")
+    
     note = models.TextField(null=True)
-    payment_method = models.CharField(max_length=50, choices=[
-        ('Credit Card', 'Credit Card'),
-        ('Debit Card', 'Debit Card'),
-        ('PayPal', 'PayPal'),
-        ('Razorpay', 'Razorpay'),
-        ('Net Banking', 'Net Banking'),
-        ('Bank Transfer', 'Bank Transfer'),
-        ('Cash on Delivery', 'Cash on Delivery'),
-    ], default='Net Banking')
-
+    
     def save(self, *args, **kwargs):
         if not self.invoice:
             self.invoice = self.generate_invoice_number()

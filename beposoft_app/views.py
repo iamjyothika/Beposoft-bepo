@@ -137,6 +137,8 @@ class UserLoginAPIView(APIView):
                 "message": "An error occurred",
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    
     def handle(self, *args, **kwargs):
         today = now().date()
         staff_members = User.objects.all()
@@ -1991,10 +1993,34 @@ class CreatePerfomaInvoice(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+           
             
             # Retrieve cart items and validate serializer
+           
+            customer = Customers.objects.filter(manager=authUser).first()
+            if not customer:
+                return Response({"status": "error", "message": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Add customer ID to request data
+            warehouse_id = request.data.get("warehouses_obj")  # ✅ Use correct field name
+            if not warehouse_id:
+                return Response({"status": "error", "message": "Warehouse ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # ✅ Fetch )
+            warehouse = get_object_or_404(WareHouse, id=warehouse_id)
             cart_items = BeposoftCart.objects.filter(user=authUser)
-            serializer = PerfomaInvoiceOrderSerializers(data=request.data)
+            if not cart_items.exists():
+                return Response({"status": "error", "message": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # ✅ Ensure warehouse_id is provided
+            
+
+            # ✅ Copy request data and include `customer_id`
+            request_data = request.data.copy()
+            request_data['customer'] = customer.id  
+            request_data['warehouses_obj'] = warehouse.id
+        
+            serializer = PerfomaInvoiceOrderSerializers(data=request_data)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             

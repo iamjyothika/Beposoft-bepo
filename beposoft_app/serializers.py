@@ -100,6 +100,7 @@ class CustomerModelSerializer(serializers.ModelSerializer):
         
         
 class CustomerModelSerializer(serializers.ModelSerializer):
+    gst = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     
     class Meta:
         model = Customers
@@ -586,10 +587,22 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
-  
+    customer = serializers.PrimaryKeyRelatedField(queryset=Customers.objects.all(), required=True) 
+   
+    warehouses_obj=serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(),required=True)
     class Meta :
         model = PerfomaInvoiceOrder
-        fields = '__all__'
+        fields = ['customer','state','company','family','manage_staff','billing_address','total_amount','warehouses_obj','order_date']
+    
+    
+    
+    def create(self, validated_data):
+        """Ensure the customer is properly set before saving"""
+        customer = validated_data.get('customer')
+        if not customer:
+            raise serializers.ValidationError({"customer": "Customer ID is required."})
+
+        return PerfomaInvoiceOrder.objects.create(**validated_data)    
 
 class PerformaOrderListSerilaizer(serializers.ModelSerializer):
     customermame=serializers.CharField(source="customer.name",read_only=True)
@@ -627,7 +640,7 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
 class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
     manage_staff = serializers.CharField(source="manage_staff.name")
     family = serializers.CharField(source="family.name")
-    bank  = BankSerializer(read_only=True)
+ 
     billing_address = ShippingAddressView(read_only=True)
     customer = CustomerSerilizers(read_only=True)
     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
@@ -638,8 +651,8 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
         fields = ["id","manage_staff","company","customer",
                   "invoice","billing_address",
                   "shipping_mode","code_charge","order_date","family",
-                  "state","payment_status","status","total_amount",
-                  "bank","payment_method","payment_receipts",
+                  "state","status","total_amount",
+                  "payment_receipts",
                   "shipping_charge","customerID","perfoma_items"]
     def to_representation(self, instance):
         # Add manage_staff_designation to the context of nested serializers

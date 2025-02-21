@@ -119,7 +119,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  
         'NAME': 'beposoft',  
         'USER': 'beposoftuser',  
-        'PASSWORD':'m6,#-,ObIw~+',
+        'PASSWORD': 'beposoft123_',
         'HOST': 'p3plzcpnl505336.prod.phx3.secureserver.net',  
         'PORT': '3306', 
         'OPTIONS': {
