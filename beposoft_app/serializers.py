@@ -75,10 +75,14 @@ class UserUpdateSerilizers(serializers.ModelSerializer):
     family_name = serializers.CharField(source='family.name', read_only=True)
     supervisor_name=serializers.CharField(source='supervisor_id.name',read_only=True)
     department_name=serializers.CharField(source='department_id.name',read_only=True)
+   
+  
     
     class Meta:
         model = User
         fields = "__all__"
+   
+        
         
 
 class StaffSerializer(serializers.ModelSerializer):
@@ -183,6 +187,11 @@ class CustomerSerilizers(serializers.ModelSerializer):
     class Meta :
         model = Customers
         fields = "__all__"
+
+class CustomerOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customers
+        fields = ['id','name']
 
 
 
@@ -434,6 +443,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'name', 'description', 'rate', 'tax', 'quantity', 'price']
 
 class OrderSerializer(serializers.ModelSerializer):
+   
     class Meta:
         model = Order
         fields = "__all__"
@@ -458,13 +468,46 @@ class PaymentRecieptsViewSerializers(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderItemModelSerializer(serializers.ModelSerializer):
+    image=serializers.ImageField(source="product.image")
+    name=serializers.CharField(source="product.name")
+    actual_price = serializers.SerializerMethodField()
+    exclude_price = serializers.SerializerMethodField()
   
-    
-    
-    
     class Meta:
         model = OrderItem
-        fields = "__all__"
+        fields = fields = [
+            "id",
+            "name",
+            "order",
+            "product",
+            "variant",
+            "size",
+            "description",
+            "rate",
+            "tax",
+            "discount",
+            "quantity",
+            "actual_price",
+            "exclude_price",
+            "image"
+        ]
+    def get_name(self, obj):
+        # Check if the product is a single or variant type
+        if obj.product.type == "single":
+            return obj.product.name
+        elif obj.variant:
+            return obj.variant.name
+        return None
+    
+    def get_actual_price(self, obj):
+        # Calculate the actual price based on the product type
+        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
+    
+    def get_exclude_price(self, obj):
+        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
+    
+
+    
     
     
 
@@ -473,6 +516,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source="order.customer.name")
     invoice = serializers.CharField(source="order.invoice")
     family = serializers.CharField(source="order.family.name")
+    packed_by=serializers.CharField(source="packed_by.name")
 
     class Meta:
         model = Warehousedata
@@ -490,6 +534,8 @@ class WarehousedataSerializer(serializers.ModelSerializer):
         )
         return data
         
+
+ 
         
 class WarehouseUpdateSerializers(serializers.ModelSerializer):
     class Meta :
@@ -549,6 +595,7 @@ class BepocartSerializers(serializers.ModelSerializer):
     class Meta :
         model = BeposoftCart
         fields = "__all__"
+
         
         
         
@@ -587,22 +634,13 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
-    customer = serializers.PrimaryKeyRelatedField(queryset=Customers.objects.all(), required=True) 
-   
-    warehouses_obj=serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(),required=True)
+
     class Meta :
         model = PerfomaInvoiceOrder
-        fields = ['customer','state','company','family','manage_staff','billing_address','total_amount','warehouses_obj','order_date']
+        fields = '__all__'
     
     
-    
-    def create(self, validated_data):
-        """Ensure the customer is properly set before saving"""
-        customer = validated_data.get('customer')
-        if not customer:
-            raise serializers.ValidationError({"customer": "Customer ID is required."})
-
-        return PerfomaInvoiceOrder.objects.create(**validated_data)    
+     
 
 class PerformaOrderListSerilaizer(serializers.ModelSerializer):
     customermame=serializers.CharField(source="customer.name",read_only=True)
@@ -711,7 +749,30 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
 class WarehouseDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = WareHouse
-        fields = "__all__"      
+        fields = "__all__"  
+
+
+class OrderdetailsSerializer(serializers.ModelSerializer):
+    manage_staff = serializers.CharField(source="manage_staff.name")
+    staffID = serializers.CharField(source="manage_staff.pk")
+    family = serializers.CharField(source="family.name")
+    billing_address = ShippingAddressView(read_only=True)
+    customer = CustomerOrderSerializer(read_only=True)
+    
+    customerID = serializers.IntegerField(source="customer.pk")
+    items = OrderItemModelSerializer(read_only = True,  many=True)
+    # warehouse=WarehousedataSerializer(many=True,read_only=True)
+    # company = CompanyDetailsSerializer(read_only=True)
+    recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
+    state = serializers.CharField(source="state.name")
+
+
+    class Meta:
+        model=Order
+        fields="__all__"
+
+
+
 
           
 

@@ -86,7 +86,7 @@ class User(models.Model):
     phone = models.CharField(max_length=100,unique=True)
     alternate_number = models.CharField(max_length=10, null=True, blank=True)
     password = models.CharField(max_length=100)
-    image = models.ImageField(max_length=100, upload_to="staff_images/", null=True, blank=True)
+    image = models.ImageField(max_length=100, upload_to="staff_images/", null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     allocated_states = models.ManyToManyField(State, blank=True)
     gender = models.CharField(max_length=100, null=True, blank=True)
@@ -336,6 +336,36 @@ class SingleProducts(models.Model) :
 
     def __str__(self):
         return f"{self.product.name}"
+class VariantProducts(models.Model):
+    created_user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='variant_products')
+    name = models.CharField(max_length=500)
+    stock = models.PositiveBigIntegerField(default=0, null=True)
+    color = models.CharField(max_length=100, null=True, blank=True)
+    is_variant = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "variant_product"   
+
+class VariantImages(models.Model):
+    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE, related_name='variant_images')
+    image = models.ImageField(upload_to='images/')
+    class Meta:
+        db_table = "variant_images"
+        
+    def __str__(self):
+        return f"{self.variant_product.name} - {self.image}"         
+
+class ProductAttributeVariant(models.Model):
+    variant_product = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,related_name="sizes")
+    attribute = models.CharField(max_length=100)
+    stock = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        db_table = "product_attribute_variant"
+
+    def __str__(self):
+        return f"{self.variant_product.name} - {self.attribute}"    
     
 
 
@@ -452,12 +482,15 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.invoice} by {self.customer}"
+   
     
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    size = models.ForeignKey(ProductAttributeVariant, on_delete=models.CASCADE,null=True)
+    
+    variant = models.ForeignKey(VariantProducts, on_delete=models.CASCADE,null=True)
     description = models.CharField(max_length=100,null=True)
     rate = models.IntegerField()  # without GST
     tax = models.PositiveIntegerField()  # tax percentage
@@ -534,9 +567,6 @@ class PerfomaInvoiceOrder(models.Model):
     code_charge = models.IntegerField(default=0,null=True)
     shipping_mode = models.CharField(max_length=100,null=True)
     shipping_charge = models.IntegerField(default=0,null=True)
-    
-    
-    
     status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),

@@ -130,6 +130,7 @@
 </head>
 
 <body>
+    {% load static %}
     <div id="content"> 
 
     <!-- Header -->
@@ -160,8 +161,8 @@
                                                 <tbody>
                                                     <tr>
                                                         <td align="left"> <img
-                                                                src="./assets/img/BEPOSOFT FINAL.PNG"
-                                                                width="100" height="32" alt="logo" border="0" /></td>
+                                                                src="{% static 'img\bepositive icon.jpg' %}"
+                                                                width="40%" height="55px" alt="logo" border="0" /></td>
                                                     </tr>
                                                     <tr class="hiddenMobile">
                                                         <td height="40"></td>
@@ -243,6 +244,10 @@
                                         <tbody>
                                             <tr>
                                                 <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px 0;"
+                                                width="52%" align="left">
+                                                Image
+                                            </th>
+                                                <th style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; font-weight: normal; line-height: 1; vertical-align: top; padding: 0 15px 7px 0;"
                                                     width="52%" align="left">
                                                     Item
                                                 </th>
@@ -290,50 +295,54 @@
                                             </tr>
 
                                             <tr>
-                                                <td height="1" style="background: #bebebe;" colspan="9"></td>
+                                                <td height="1" style="background: #bebebe;" colspan="14"></td>
                                             </tr>
                                             <tr>
-                                                <td height="10" colspan="9"></td>
+                                                <td height="10" colspan="14"></td>
                                             </tr>
                                             {% for item in items %}
                                             <tr>
                                                 <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #000;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                class="article">
+                                                <img src="{{ item.product.image.url }}" width="50%" height="60px">
+                                            </td>
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #000;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                     class="article">
                                                     {{ item.product.name }}
                                                 </td>
                                                 <td
-                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;">
+                                                    style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;">
                                                     <small>
                                                     {{ item.product.hsn_code }}
 
                                                     </small>
                                                 </td>
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                     align="center">{{item.product.selling_price}}</td>
-                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                     align="center">{{item.product.exclude_price|floatformat:2}}</td>
 
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                 align="center">{{item.product.tax}}</td>
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                 align="center">{{item.tax_amount|floatformat:2}}</td>
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                 align="center">{{ item.discount|floatformat:2 }}</td>
                                                
-                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 18px; vertical-align: top; padding: 10px 0;"
+                                                    <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e; line-height: 18px; vertical-align: top; padding: 25px 0;"
                                                     align="center">
                                                     {{ item.quantity }}
                                                 </td>
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #646a6e;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                     align="center">{{ item.final_price|floatformat:2 }}</td>
                                                    
 
-                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33;  line-height: 18px;  vertical-align: top; padding:10px 0;"
+                                                <td style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #1e2b33;  line-height: 18px;  vertical-align: top; padding:25px 0;"
                                                     align="right">{{item.total|floatformat:2 }}</td>
                                             </tr>
                                             
                                             <tr>
-                                                <td height="1" colspan="9" style="border-bottom:1px solid #e4e4e4"></td>
+                                                <td height="1" colspan="14" style="border-bottom:1px solid #e4e4e4"></td>
                                             </tr>
                                           {% endfor %}
                                         </tbody>
@@ -479,6 +488,7 @@
                                                             <tr>
                                                                 <td
                                                                     style="font-size: 12px; font-family: 'Open Sans', sans-serif; color: #5b5b5b; line-height: 20px; vertical-align: top; ">
+
                                                                     {{order.customer.name}}<br>{{order.customer.address}}<br>{{order.customer.zip_code}}
                                                                     NY<br>{{order.customer.phone}}<br>{{order.customer.state}}
                                                                 </td>
@@ -645,32 +655,28 @@
     </script>
 
     <script>
-        const download_button =
-            document.getElementById('downloadPDF');
-        const content =
-            document.getElementById('content');
-
-        download_button.addEventListener
-            ('click', async function () {
-                const filename = 'table_data.pdf';
-
-                try {
-                    const opt = {
-                        margin: 1,
-                        filename: filename,
-                        image: { type: 'jpeg', quality: 2.98 },
-                        html2canvas: { scale: 5 },
-                        jsPDF: {
-                            unit: 'in', format: 'letter',
-                            orientation: 'portrait'
-                        }
-                    };
-                    await html2pdf().set(opt).
-                        from(content).save();
-                } catch (error) {
-                    console.error('Error:', error.message);
-                }
-            });
+        document.getElementById('downloadPDF').addEventListener('click', async function () {
+            const content = document.getElementById('content');
+            const filename = 'invoice.pdf';
+    
+            try {
+                const opt = {
+                    margin: [10, 10, 10, 10], 
+                    filename: filename,
+                    image: { type: 'jpeg', quality: 2.5 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a3', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css'] } // Avoid unnecessary breaks
+                };
+    
+                await html2pdf().set(opt).from(content).toPdf().get('pdf').then(pdf => {
+                    pdf.internal.scaleFactor = 1.5;
+                    pdf.save(filename);
+                });
+            } catch (error) {
+                console.error('Error:', error.message);
+            }
+        });
     </script>
 
 </body>

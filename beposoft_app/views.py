@@ -275,6 +275,8 @@ class Users(BaseTokenView):
                         
             users = User.objects.all()
             serializer = UserUpdateSerilizers(users, many=True)
+           
+            
             return Response({
                 "data": serializer.data,
                 "message": "Users fetching is successfully completed"
@@ -340,8 +342,9 @@ class UserDataUpdate(BaseTokenView):
 
             # Retrieve the user object to be updated
             user = self.get_user(pk)
+            
 
-            # If the password is provided in the request, hash it
+          # If the password is provided in the request, hash it
             if 'password' in request.data:
                 request.data['password'] = make_password(request.data['password'])
 
@@ -349,6 +352,8 @@ class UserDataUpdate(BaseTokenView):
             serializer = UserUpdateSerilizers(user, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                print(serializer)
+             
                 return Response(
                     {"message": "User updated successfully", "data": serializer.data},
                     status=status.HTTP_200_OK
@@ -1314,15 +1319,6 @@ class CreateOrder(BaseTokenView):
             
             order = serializer.save()
             print(serializer.data)
-            
-            
-            
-           
-
-
-           
-              # Create order
-            
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
 
@@ -1352,6 +1348,8 @@ class CreateOrder(BaseTokenView):
                     tax=tax,
                     rate=rate,
                     description=item_data.note,
+                  
+                    
                 )
             
             # Clear cart after successful order creation
@@ -1373,7 +1371,7 @@ class OrderListView(BaseTokenView):
             orders = Order.objects.all()
             invoice_created_count = orders.filter(status='Invoice Created').count()
             invoice_approved_count = orders.filter(status='Invoice Approved').count()
-            serializer = OrderModelSerilizer(orders, many=True)
+            serializer = OrderdetailsSerializer(orders, many=True)
             response_data = {
                 "invoice_created_count": invoice_created_count,
                 "invoice_approved_count": invoice_approved_count,
@@ -1993,39 +1991,24 @@ class CreatePerfomaInvoice(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            cart_items = BeposoftCart.objects.filter(user=authUser)
+            serializer = PerfomaInvoiceOrderSerializers(data=request.data)
+            if not serializer.is_valid():
+                return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+            
            
             
             # Retrieve cart items and validate serializer
            
-            customer = Customers.objects.filter(manager=authUser).first()
-            if not customer:
-                return Response({"status": "error", "message": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Add customer ID to request data
-            warehouse_id = request.data.get("warehouses_obj")  # ✅ Use correct field name
-            if not warehouse_id:
-                return Response({"status": "error", "message": "Warehouse ID is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # ✅ Fetch )
-            warehouse = get_object_or_404(WareHouse, id=warehouse_id)
-            cart_items = BeposoftCart.objects.filter(user=authUser)
-            if not cart_items.exists():
-                return Response({"status": "error", "message": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
-
-            # ✅ Ensure warehouse_id is provided
             
-
-            # ✅ Copy request data and include `customer_id`
-            request_data = request.data.copy()
-            request_data['customer'] = customer.id  
-            request_data['warehouses_obj'] = warehouse.id
         
-            serializer = PerfomaInvoiceOrderSerializers(data=request_data)
-            if not serializer.is_valid():
-                return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+           
+           
             
             order = serializer.save()  # Create order
-            
+            print(order)
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
 
@@ -2351,6 +2334,50 @@ class DailyGoodsBydate(BaseTokenView):
             return Response(serializer.data,status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class WarehouseListView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            warehouses = Warehousedata.objects.all()
+
+            # Serialize warehouse data
+            serializer = WarehousedataSerializer(warehouses, many=True)
+
+            # Group by invoice (storing invoice_id as well)
+            grouped_data = {}
+            for warehouse in serializer.data:
+                invoice = warehouse.get("invoice", "No Invoice")  # Default if missing
+                invoice_id = warehouse.get("order", None)  # Assuming 'order' is the invoice ID
+
+                if invoice not in grouped_data:
+                    grouped_data[invoice] = {
+                        "invoice_id": invoice_id,
+                        "invoice": invoice,
+                        "warehouses": []
+                    }
+                grouped_data[invoice]["warehouses"].append(warehouse)
+
+            # Convert dictionary to list format
+            formatted_response = list(grouped_data.values())
+
+            response_data = {
+                "results": formatted_response
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"status": "error", "message": "Warehouse data not found"}, status=status.HTTP_404_NOT_FOUND)
+        except DatabaseError:
+            return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
         
 
 class ExpensAddView(BaseTokenView):

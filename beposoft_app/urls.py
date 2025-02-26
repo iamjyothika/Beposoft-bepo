@@ -128,6 +128,7 @@ urlpatterns = [
     path('api/warehouse/detail/<int:pk>/',WarehouseDetailView.as_view()),
     path('api/warehouse/box/detail/',DailyGoodsView.as_view()),            #deliveryreport
     path('api/warehousedata/<str:date>/',DailyGoodsBydate.as_view()),
+    path('api/warehouse/get/',WarehouseListView.as_view()),
     
     
     path('api/grv/data/',GRVaddView.as_view()),

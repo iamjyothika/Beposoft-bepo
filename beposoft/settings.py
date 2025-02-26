@@ -117,10 +117,10 @@ WSGI_APPLICATION = 'beposoft.wsgi.application'
 DATABASES = {  
     'default': {  
         'ENGINE': 'django.db.backends.mysql',  
-        'NAME': 'beposoft',  
-        'USER': 'beposoftuser',  
-        'PASSWORD': 'beposoft123_',
-        'HOST': 'p3plzcpnl505336.prod.phx3.secureserver.net',  
+        'NAME': 'bepocart_beposoft',  
+        'USER': 'bepocart_bepocart',  
+        'PASSWORD': 'beposoft123@#',
+        'HOST': '124.201.148.37.host.secureserver.net',  
         'PORT': '3306', 
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
@@ -171,8 +171,8 @@ USE_I18N = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 
-
-STATIC_URL = '/static/'  
+STATIC_URL = 'static/'
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = '/media/'    
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  
 
