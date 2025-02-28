@@ -258,7 +258,8 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "color":variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
                         "selling_price": variant.selling_price , # Selling price field
-                        "created_user":variant.created_user.name
+                        "created_user":variant.created_user.name,
+                        "approval_status":variant.approval_status
                         
                     })
 
@@ -514,6 +515,8 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
 
 class WarehousedataSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source="order.customer.name")
+    phone=serializers.CharField(source="order.customer.phone")
+    zip_code=serializers.CharField(source="order.customer.zip_code")
     invoice = serializers.CharField(source="order.invoice")
     family = serializers.CharField(source="order.family.name")
     packed_by=serializers.CharField(source="packed_by.name")
@@ -523,7 +526,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
             'parcel_service', 'tracking_id', 'shipping_charge', 'status',
-            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
+            'shipped_date', 'order', 'packed_by', 'customer','phone','zip_code', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
         ]
 
     def to_representation(self, instance):
@@ -540,7 +543,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
 class WarehouseUpdateSerializers(serializers.ModelSerializer):
     class Meta :
         model = Warehousedata
-        fields = ['parcel_service','tracking_id','shipping_charge','actual_weight','parcel_amount','postoffice_date']
+        fields = '__all__'
         
         
 # class OrderModelSerilizer(serializers.ModelSerializer):

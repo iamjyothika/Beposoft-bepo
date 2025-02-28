@@ -70,16 +70,6 @@ class UserLoginAPIView(APIView):
                 if customer and customer.check_password(password):
                     if customer.designation=="HR":
                         self.handle()
-
-
-
-                 
-                    
-
-                        
-
-                    
-                    # Generate JWT token
                     expiration_time = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
                    
                     user_token = {
@@ -147,9 +137,6 @@ class UserLoginAPIView(APIView):
             # Create attendance for staff if it doesn't exist for today
             Attendance.objects.get_or_create(staff=staff, date=today, defaults={"attendance_status": "Present"})
       
-
-        
-
 
 class BaseTokenView(APIView):
     
@@ -611,6 +598,7 @@ class ProductListView(BaseTokenView):
 
             # Serialize the unique products list
             serializer = ProductSingleviewSerializres(unique_products, many=True)
+          
 
             return Response({
                 "message": "Product list successfully retrieved",
@@ -647,8 +635,6 @@ class ListAllProducts(BaseTokenView):
                 "error": "An error occurred while retrieving products. Please try again later."
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-
-
 
 class ProductUpdateView(BaseTokenView):
     
@@ -776,9 +762,55 @@ class SingleProductImageView(BaseTokenView):
         
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class  ApprovedProductList(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            approved_products = Products.objects.filter(approval_status='Approved')
+            serializer = ProductSingleviewSerializres(approved_products, many=True)
             
+            return Response({
+                "message": "Approved products fetched successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": "An error occurred while fetching products",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class  DisapprovedProductList(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            approved_products = Products.objects.filter(approval_status='Disapproved')
+            serializer = ProductSingleviewSerializres(approved_products, many=True)
+            
+            return Response({
+                "message": "Approved products fetched successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": "An error occurred while fetching products",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+                
 class DepartmentCreateView(BaseTokenView):
     def post(self,request):
         try:
@@ -1372,6 +1404,7 @@ class OrderListView(BaseTokenView):
             invoice_created_count = orders.filter(status='Invoice Created').count()
             invoice_approved_count = orders.filter(status='Invoice Approved').count()
             serializer = OrderdetailsSerializer(orders, many=True)
+
             response_data = {
                 "invoice_created_count": invoice_created_count,
                 "invoice_approved_count": invoice_approved_count,
@@ -1408,11 +1441,6 @@ class OrderUpdateView(BaseTokenView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
         
-
-        
-
-        
-
 
 class CustomerOrderItems(BaseTokenView):
     def get(self, request, order_id):
@@ -2190,6 +2218,7 @@ class WarehouseDataView(BaseTokenView):
 
             if serializer.is_valid():
                 serializer.save()
+                print(serializer)
                 return Response({"status":"success","data":serializer.data}, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -2217,6 +2246,7 @@ class WarehouseDetailView(BaseTokenView):
                 return error_response
             warehousedata = get_object_or_404(Warehousedata,pk=pk)
             serializer = WarehouseUpdateSerializers(warehousedata, data=request.data,partial =True)
+            print(serializer)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -2377,8 +2407,79 @@ class WarehouseListView(BaseTokenView):
             print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+from django.shortcuts import get_object_or_404
 
-        
+class WarehouseListViewbyDate(BaseTokenView):
+    def get(self, request, shipped_date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            # Filter data by shipped_date passed in the URL
+            warehouses = Warehousedata.objects.filter(shipped_date=shipped_date)
+
+            if not warehouses.exists():
+                return Response(
+                    {"status": "error", "message": "No warehouse data found for this shipped date"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Serialize warehouse data
+            serializer = WarehousedataSerializer(warehouses, many=True)
+
+            # Group by invoice
+            grouped_families = {}
+            for warehouse in serializer.data:
+                family = warehouse.get("family", "Bepocart")  # Default to Bepocart if no family found
+                invoice_id = warehouse.get("order")
+                invoice = warehouse.get("invoice") or "No Invoice"
+
+                # Initialize family group if not exists
+                if family not in grouped_families:
+                    grouped_families[family] = {"family": family, "orders": []}
+
+                # Check if invoice_id already exists in orders
+                invoice_exists = next(
+                    (order for order in grouped_families[family]["orders"] if order["invoice_id"] == invoice_id),
+                    None
+                )
+
+                if invoice_exists:
+                    # Append warehouse details to existing invoice
+                    invoice_exists["warehouses"].append(warehouse)
+                else:
+                    # Create new invoice entry
+                    grouped_families[family]["orders"].append({
+                        "invoice_id": invoice_id,
+                        "invoice": invoice,
+                        "warehouses": [warehouse]
+                    })
+
+
+            # Convert dictionary to list format
+            formatted_response = list(grouped_families.values())
+            return Response({"results": formatted_response}, status=status.HTTP_200_OK)
+
+           
+
+        except Exception as e:
+            print("Error:", str(e))
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class ExpensAddView(BaseTokenView):
     def post(self, request):
@@ -3746,12 +3847,6 @@ class WarehouseGetView(BaseTokenView):
         
 
 
-            
-
-
-
-
-
 class ProductByWarehouseView(BaseTokenView):
     def get(self, request, warehouse_id):
         try:
@@ -3767,8 +3862,16 @@ class ProductByWarehouseView(BaseTokenView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Filter products by warehouse_id
-            products = Products.objects.filter(warehouse=warehouse)
+            # Filter products by warehouse_id and approval_status being either 'Approved' or 'Disapproved'
+            products = Products.objects.filter(
+                warehouse=warehouse, 
+                approval_status__in=['Approved', 'Disapproved']
+            )
+            if not products.exists():
+                return Response(
+                    {"message": "No products found in this warehouse with the required approval status"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
             # Initialize a set to track unique groupIDs
             seen_group_ids = set()
@@ -3800,9 +3903,8 @@ class ProductByWarehouseView(BaseTokenView):
                 "message": "An error occurred",
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
-
-
 
 class WareHouseOrdersView(BaseTokenView):
     def get(self, request, warehouse_id):
@@ -3932,27 +4034,6 @@ class StaffAttendanceAbsenceAPIView(APIView):
             )              
 
 
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class UpdateCartPricesView(BaseTokenView):
     def put(self, request):
         try:
@@ -4003,9 +4084,6 @@ class UpdateCartPricesView(BaseTokenView):
                 {"status": "error", "message": "An error occurred", "errors": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-
 
 
 class FinancereportAPIView(BaseTokenView):
