@@ -11,7 +11,6 @@ admin.site.register(Customers)
 admin.site.register(Products)
 admin.site.register(Family)
 admin.site.register(Shipping)
-admin.site.register(ExpenseModel)
 admin.site.register(GRVModel)
 
 admin.site.register(Attributes)

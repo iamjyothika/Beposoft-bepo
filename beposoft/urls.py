@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('beposoft_app.urls')),
-    path('bepocart/', include('bepocart.urls'))
+    path('apis/',include('bepocart.urls'))
 
 ]
 if settings.DEBUG:
