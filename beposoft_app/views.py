@@ -2525,6 +2525,7 @@ class ExpensAddView(BaseTokenView):
             if error_response:
                 return error_response
             expense=ExpenseSerializer(data=request.data)
+            print(expense)
             if expense.is_valid():
                 expense.save()
                 return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data}, status=status.HTTP_200_OK)
@@ -2540,6 +2541,22 @@ class ExpensAddView(BaseTokenView):
             expense_data = ExpenseModel.objects.all()
             serializer = ExpenseModelsSerializers(expense_data, many=True)
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExpensAddViewExpectEmi(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense=ExpenseSerializerExpectEmi(data=request.data)
+            print(expense)
+            if expense.is_valid():
+                expense.save()
+                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data}, status=status.HTTP_200_OK)
+            return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
