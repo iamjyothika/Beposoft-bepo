@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from beposoft_app.models import Products
-from .serializers import ProductSerilizers
+from .serializers import ProductSerilizers,ProductAssetsSerializer,ExpenseAssetsSerializer
 from rest_framework.response import Response
 from .models import*
 from .serializers import LoanSerializer
@@ -11,6 +11,7 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, DecodeError
 from django.conf import settings
 from beposoft_app.models import User
+from datetime import datetime, timedelta
 
 
 class ProductListView(APIView):
@@ -155,6 +156,7 @@ class EmiExpenseView(BaseTokenView):
 
         # Fetching EMI-related expenses
         expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("expense_date", "amount")
+       
 
         # Calculating total amount paid (including down payment)
         total_emi_paid = sum(exp["amount"] for exp in expenses)
@@ -170,6 +172,8 @@ class EmiExpenseView(BaseTokenView):
             "emi_amount":loan.emi_amount,
             "total_interest":loan.total_interest,
             "total_payment":loan.total_payment,
+            "startdate":loan.startdate,
+            "enddate":loan.enddate,
             "total_emi_paid": total_emi_paid,  # Only EMI payments
             "total_amount_paid": total_amount_paid,  # EMI + Down Payment
             "emidata": [{"date": exp["expense_date"], "amount": exp["amount"]} for exp in expenses]
@@ -186,9 +190,13 @@ class EmiExpenseView(BaseTokenView):
             # Fetching all EMI expenses related to this loan
             expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("expense_date", "amount")
             
+           
+            
+          
+            current_date += timedelta(days=32)
+            current_date = current_date.replace(day=1)
             total_emi_paid = sum(exp["amount"] for exp in expenses)
-            total_amount_paid = loan.down_payment + total_emi_paid  # Adding down payment to EMI payments
-
+            total_amount_paid = loan.down_payment + total_emi_paid 
             # Structuring the response
             loan_data = {
                 "id": loan.id,
@@ -200,6 +208,8 @@ class EmiExpenseView(BaseTokenView):
                 "emi_amount":loan.emi_amount,
                  "total_interest":loan.total_interest,
                  "total_payment":loan.total_payment,
+                 "startdate":loan.startdate,
+                 "enddate":loan.enddate,
                 "total_emi_paid": total_emi_paid,  # Only EMI payments
                 "total_amount_paid": total_amount_paid,  # EMI + Down Payment
                 "emidata": [{"date": exp["expense_date"], "amount": exp["amount"]} for exp in expenses]
@@ -207,3 +217,19 @@ class EmiExpenseView(BaseTokenView):
             response_data.append(loan_data)
 
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+class AssetsAPIView(BaseTokenView):
+    def get(self, request):
+        try:
+            products = Products.objects.all()
+            expenses = ExpenseModel.objects.filter(asset_types='assets')
+            
+            products_data = ProductAssetsSerializer(products, many=True).data
+            expenses_data = ExpenseAssetsSerializer(expenses, many=True).data
+            
+            assets = products_data + expenses_data
+            
+            return Response({"assets": assets}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
