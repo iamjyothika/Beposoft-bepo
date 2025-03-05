@@ -14,6 +14,11 @@ class ProductSerilizers(serializers.ModelSerializer):
 
 
 class LoanSerializer(serializers.ModelSerializer):
-    class Meta:
+    emi = serializers.SerializerMethodField()
+    class Meta: 
         model = Loan
-        fields = "__all_"
+        fields = "__all__"
+    def get_emi(self, obj):
+        return obj.calculate_emi()      
+
+

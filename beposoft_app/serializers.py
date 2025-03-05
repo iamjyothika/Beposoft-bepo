@@ -7,6 +7,7 @@ from datetime import datetime
 from django.db.models import F, Sum, FloatField
 from django.db.models.functions import Cast
 from datetime import date
+from bepocart.models import*
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -258,7 +259,8 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "color":variant.color if variant.color else None,
                         "size": variant.size if variant.size else None,
                         "selling_price": variant.selling_price , # Selling price field
-                        "created_user":variant.created_user.name
+                        "created_user":variant.created_user.name,
+                        "approval_status":variant.approval_status
                         
                     })
 
@@ -408,10 +410,10 @@ class ShippingSerializers(serializers.ModelSerializer):
     
     
 class ShippingAddressView(serializers.ModelSerializer):
-    state = serializers.CharField(source='state.name', read_only=True)
+    # state = serializers.CharField(source='state.name', read_only=True)
     class Meta:
         model = Shipping
-        fields = ["id","name","email","zipcode","address","phone","country","city","state"]
+        fields = ["id","address"]
 
 
 
@@ -512,18 +514,29 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     
 
 
-class WarehousedataSerializer(serializers.ModelSerializer):
+class  WarehousedataSerializer(serializers.ModelSerializer):
     customer = serializers.CharField(source="order.customer.name")
+    phone=serializers.CharField(source="order.customer.phone")
+    zip_code=serializers.CharField(source="order.customer.zip_code")
     invoice = serializers.CharField(source="order.invoice")
     family = serializers.CharField(source="order.family.name")
     packed_by=serializers.CharField(source="packed_by.name")
+    checked_by = serializers.SerializerMethodField()
+    verified_by = serializers.SerializerMethodField()
+
+    def get_checked_by(self, obj):
+        return obj.checked_by.name if obj.checked_by is not None else None
+
+    def get_verified_by(self, obj):
+        return obj.verified_by.name if obj.verified_by is not None else None
+
 
     class Meta:
         model = Warehousedata
         fields = [
             'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
             'parcel_service', 'tracking_id', 'shipping_charge', 'status',
-            'shipped_date', 'order', 'packed_by', 'customer', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
+            'shipped_date', 'order', 'packed_by','verified_by','checked_by', 'customer','phone','zip_code', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
         ]
 
     def to_representation(self, instance):
@@ -540,7 +553,7 @@ class WarehousedataSerializer(serializers.ModelSerializer):
 class WarehouseUpdateSerializers(serializers.ModelSerializer):
     class Meta :
         model = Warehousedata
-        fields = ['parcel_service','tracking_id','shipping_charge','actual_weight','parcel_amount','postoffice_date']
+        fields = '__all__'
         
         
 # class OrderModelSerilizer(serializers.ModelSerializer):
@@ -753,23 +766,20 @@ class WarehouseDetailSerializer(serializers.ModelSerializer):
 
 
 class OrderdetailsSerializer(serializers.ModelSerializer):
-    manage_staff = serializers.CharField(source="manage_staff.name")
-    staffID = serializers.CharField(source="manage_staff.pk")
-    family = serializers.CharField(source="family.name")
+    manage_staff = serializers.CharField(source="manage_staff.name", read_only=True)
+    staffID = serializers.CharField(source="manage_staff.pk", read_only=True)
+    family = serializers.CharField(source="family.name", read_only=True)
     billing_address = ShippingAddressView(read_only=True)
     customer = CustomerOrderSerializer(read_only=True)
-    
-    customerID = serializers.IntegerField(source="customer.pk")
-    items = OrderItemModelSerializer(read_only = True,  many=True)
-    # warehouse=WarehousedataSerializer(many=True,read_only=True)
-    # company = CompanyDetailsSerializer(read_only=True)
-    recived_payment = PaymentRecieptsViewSerializers(read_only=True, many=True)
-    state = serializers.CharField(source="state.name")
-
+    customerID = serializers.IntegerField(source="customer.pk", read_only=True)
+    # items = OrderItemModelSerializer(many=True, read_only=True)
+    # recived_payment = PaymentRecieptsViewSerializers(many=True, read_only=True)
+    state = serializers.CharField(source="state.name", read_only=True)
 
     class Meta:
-        model=Order
-        fields="__all__"
+        model = Order
+        fields = "__all__"
+
 
 
 

@@ -7,6 +7,9 @@ from decimal import Decimal
 import random
 from django.utils.timezone import now 
 from datetime import datetime
+
+
+
 # Create your models here.
 
 
@@ -252,9 +255,6 @@ class Shipping(models.Model):
     def __str__(self):
         return self.name
 
-
-
-
 import uuid
 
 class Products(models.Model):
@@ -273,10 +273,19 @@ class Products(models.Model):
         ('SET OF 6', 'SET OF 6'),
         ('SET OF 8', 'SET OF 8'),
     ]
+    PURCHASE_TYPES=[
+        ('Local', 'Local'),
+        ('International', 'International'),
+    ]
+    STATUS_TYPES=[
+        ('Approved','Approved'),
+        ('Disapproved','Disapproved')
+    ]
     
     
     created_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     warehouse = models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True,blank=True,related_name="products")
+    product_approved_user=models.ForeignKey(User,on_delete=models.CASCADE,null=True, related_name='approved_products')
     name = models.CharField(max_length=500)
     hsn_code = models.CharField(max_length=100)
     family = models.ManyToManyField(Family, related_name='familys')
@@ -294,6 +303,9 @@ class Products(models.Model):
     size = models.CharField(max_length=100, null=True, blank=True)
     groupID = models.CharField(max_length=100, null=True, blank=True)
     variantID = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    purchase_type=models.CharField(max_length=100,choices=PURCHASE_TYPES,default='International')
+    approval_status=models.CharField(max_length=100,choices=STATUS_TYPES,default='Disapproved')
+    
 
     def generate_variant_id(self):
         """Generates a unique variantID using UUID"""
@@ -326,7 +338,7 @@ class Products(models.Model):
 
 
 
-class SingleProducts(models.Model) :
+class SingleProducts(models.Model):
     created_user = models.ForeignKey(User,on_delete=models.CASCADE)
     product = models.ForeignKey(Products, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='images/')
@@ -642,13 +654,13 @@ class Warehousedata(models.Model):
     height=models.CharField(max_length=30,null=True)
     image=models.ImageField(upload_to='images/',null=True,blank=True)
     packed_by=models.ForeignKey(User,on_delete=models.CASCADE)
+    verified_by=models.ForeignKey(User,on_delete=models.CASCADE,null=True,related_name='verified_user')
+    checked_by=models.ForeignKey(User,on_delete=models.CASCADE,null=True,related_name='checked_user')
     parcel_service=models.ForeignKey(ParcalService, on_delete=models.CASCADE,null=True, blank=True)  
     tracking_id=models.CharField(max_length=100,null=True, blank=True)
     actual_weight = models.DecimalField(max_digits=10,decimal_places=2, null=True, blank=True,default=0.0)
     parcel_amount=models.DecimalField(max_digits=10,decimal_places=2, null=True, blank=True,default=0.0)
     shipping_charge=models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
-
-
     bank = models.ForeignKey(Bank, on_delete=models.CASCADE,null=True)
     status=models.CharField(max_length=30,null=True, blank=True)
     shipped_date=models.DateField(null=True, blank=True)
@@ -694,27 +706,9 @@ class GRVModel(models.Model):
             print("No change in status.")
 
 
-class ExpenseModel(models.Model):
-    PURPOSE_CHOICES=[
-        ('water','Water'),
-        ('electricity','Electricity'),
-        ('salary','Salary'),
-        ('emi','EMI'),
-        ('rent','Rent'),
-        ('equipments,','Equipments'),
-        ('travel','Travel'),
-        ('others','Others'),
-    ]
-    company=models.ForeignKey(Company,on_delete=models.CASCADE, related_name="company")
-    payed_by=models.ForeignKey(User,on_delete=models.CASCADE, related_name="payed_by")
-    bank=models.ForeignKey(Bank,on_delete=models.CASCADE,related_name="banks")
-    purpose_of_payment=models.CharField(max_length=100,choices=PURPOSE_CHOICES,null=True)
-    amount=models.DecimalField(max_digits=10,decimal_places=2,null=True)
-    expense_date=models.DateField()
-    transaction_id=models.CharField(max_length=100)
-    description=models.TextField()
-    added_by=models.CharField(max_length=30,null=True)
 
+
+ 
 class OrderRequest(models.Model):
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="order_requests")

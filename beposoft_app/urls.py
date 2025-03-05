@@ -38,6 +38,8 @@ urlpatterns = [
     path('api/products/',ProductListView.as_view(),name="products"), # completed
     path('api/all/products/',ListAllProducts.as_view()),
     path('api/product/update/<int:pk>/',ProductUpdateView.as_view(),name="product-update"),
+    path('api/approved/products/',ApprovedProductList.as_view()),
+    path('api/disapproved/products/', DisapprovedProductList.as_view()),
 
 
     path('api/add/department/',DepartmentCreateView.as_view(),name="add-department"),  # completed
@@ -90,25 +92,15 @@ urlpatterns = [
     path('api/remove/order/<int:pk>/item/',RemoveExistsOrderItems.as_view()),
     
 
-    
-
-    
-   
-
-        
     path('api/staff/customers/',StaffCustomersView.as_view(),name="staff-customers"),
     path('api/cart/product/', Cart.as_view(), name='add-product-cart'),
     path('api/cart/products/',StaffcartStoredProductsView.as_view()),
     path('api/cart/update/<int:pk>/',StaffDeleteCartProduct.as_view()),
     path('api/cart/price/',UpdateCartPricesView.as_view()),
     
-    
-    
-    
     path('api/add/bank/',CreateBankAccountView.as_view()),
     path('api/banks/',BankView.as_view()),
     path('api/bank/view/<int:pk>/',BankAccountView.as_view()),
-    
     path('api/company/data/',CreateCompnayDetailsView.as_view()),
     
     
@@ -129,6 +121,8 @@ urlpatterns = [
     path('api/warehouse/box/detail/',DailyGoodsView.as_view()),            #deliveryreport
     path('api/warehousedata/<str:date>/',DailyGoodsBydate.as_view()),
     path('api/warehouse/get/',WarehouseListView.as_view()),
+    path('api/warehousesdataget/<str:shipped_date>/', WarehouseListViewbyDate.as_view(), name='warehouse-list'),
+    path('warehouse/update-checked-by/<str:shipped_date>/', WarehouseUpdateCheckedByView.as_view(), name='update-checked-by'),
     
     
     path('api/grv/data/',GRVaddView.as_view()),
@@ -168,10 +162,12 @@ urlpatterns = [
     path('api/bulk/upload/orders/',OrderBulkUploadAPIView.as_view()),
     path('api/bulk/upload/customers/',CustomerUploadView.as_view()),
     path('invoice/<int:pk>/', GenerateInvoice, name='generate_invoice'),
+    path('invoice/',Invo,name="invoice"),
+    path('deliverynote/',Deliverynote,name="deliverynote"),
+    path('adress/',Adress,name="adress"),
 
 
     path('api/warehouse/add/',WarehouseAddView.as_view()),
-    
     path('api/warehouse/update/<int:pk>/',WarehouseGetView.as_view()),
     path('api/warehouse/products/<int:warehouse_id>/',ProductByWarehouseView.as_view()),
     path('api/warehouse/orders/<int:warehouse_id>/',WareHouseOrdersView.as_view()),
