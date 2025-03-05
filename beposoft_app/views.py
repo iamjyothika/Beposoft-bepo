@@ -532,7 +532,7 @@ class ProductCreateView(BaseTokenView):
 
             # Extract and validate family IDs
             family_ids = request.data.get('family')
-            # print(family_ids)
+            print(family_ids)
             if not family_ids:
                 return Response({"message": "No family IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -549,8 +549,10 @@ class ProductCreateView(BaseTokenView):
             logger.info(f"Received data: {request.data}")  # ✅ Log request data
             print(f"Received data: {request.data}") 
             serializer = ProductsSerializer(data=request.data)
+            # print(serializer)
             if serializer.is_valid():
                 product = serializer.save()
+                print(product)
                 product.family.set(families)
 
                  
@@ -1400,14 +1402,22 @@ class OrderListView(BaseTokenView):
             if error_response:
                 return error_response
 
-            orders = Order.objects.all()
-            invoice_created_count = orders.filter(status='Invoice Created').count()
-            invoice_approved_count = orders.filter(status='Invoice Approved').count()
+            # Optimize Query
+            orders = Order.objects.select_related(
+                "manage_staff", "customer", "state", "family"
+            ).all()
+
+            # Optimize Count Queries
+            invoice_counts = orders.aggregate(
+                invoice_created_count=Count("id", filter=Q(status="Invoice Created")),
+                invoice_approved_count=Count("id", filter=Q(status="Invoice Approved"))
+            )
+
             serializer = OrderdetailsSerializer(orders, many=True)
 
             response_data = {
-                "invoice_created_count": invoice_created_count,
-                "invoice_approved_count": invoice_approved_count,
+                "invoice_created_count": invoice_counts["invoice_created_count"],
+                "invoice_approved_count": invoice_counts["invoice_approved_count"],
                 "results": serializer.data
             }
             return Response(response_data, status=status.HTTP_200_OK)
@@ -2132,17 +2142,6 @@ class PerformaOrderStaff(BaseTokenView):
 
 
 
-
-
-
-
-
-
-
-
-
-        
-        
 class CreateCompnayDetailsView(BaseTokenView):
     def post(self, request):
         try:
@@ -2215,6 +2214,7 @@ class WarehouseDataView(BaseTokenView):
                 serializer = WarehouseBoxesDataSerializer(data=request.data, many=True)
             else:
                 serializer = WarehouseBoxesDataSerializer(data=request.data)
+                print(serializer)
 
             if serializer.is_valid():
                 serializer.save()
@@ -2245,6 +2245,7 @@ class WarehouseDetailView(BaseTokenView):
             if error_response:
                 return error_response
             warehousedata = get_object_or_404(Warehousedata,pk=pk)
+            print(warehousedata)
             serializer = WarehouseUpdateSerializers(warehousedata, data=request.data,partial =True)
             print(serializer)
             if serializer.is_valid():
@@ -2467,16 +2468,52 @@ class WarehouseListViewbyDate(BaseTokenView):
             print("Error:", str(e))
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class WarehouseUpdateCheckedByView(BaseTokenView):
+    def put(self, request, shipped_date):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
 
-
-
-
-
-
-
-
-
-
+            # Get the checked_by user ID from request data
+            checked_by_id = request.data.get("checked_by")
+            if not checked_by_id:
+                return Response(
+                    {"status": "error", "message": "checked_by user ID is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate if the user exists
+            try:
+                checked_by_user = User.objects.get(id=checked_by_id)
+            except User.DoesNotExist:
+                return Response(
+                    {"status": "error", "message": "User not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Fetch and update all warehouse records matching shipped_date
+            warehouses = Warehousedata.objects.filter(shipped_date=shipped_date)
+            if not warehouses.exists():
+                return Response(
+                    {"status": "error", "message": "No warehouse data found for the given shipped date"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            warehouses.update(checked_by=checked_by_user)
+            
+            # Retrieve and sort warehouses by shipped_date
+            sorted_warehouses = Warehousedata.objects.filter(shipped_date=shipped_date).order_by("shipped_date")
+            serializer = WarehousedataSerializer(sorted_warehouses, many=True)
+            
+            return Response(
+                {"status": "success", "message": "Checked by updated successfully", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            print("Error:", str(e))
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -3738,8 +3775,13 @@ def GenerateInvoice(request,pk):
     }
     return render(request, 'invoice.html',context)
 
+def Invo(request):
+    return render (request,"invo.html")
+def Deliverynote(request):
+    return render(request,"deliverynote.html")
 
-
+def Adress(request):
+    return render(request,"address.html")
 
 class ManagerUnderCustomer(BaseTokenView):
     def get(self, request):

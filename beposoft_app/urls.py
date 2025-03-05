@@ -122,6 +122,7 @@ urlpatterns = [
     path('api/warehousedata/<str:date>/',DailyGoodsBydate.as_view()),
     path('api/warehouse/get/',WarehouseListView.as_view()),
     path('api/warehousesdataget/<str:shipped_date>/', WarehouseListViewbyDate.as_view(), name='warehouse-list'),
+    path('warehouse/update-checked-by/<str:shipped_date>/', WarehouseUpdateCheckedByView.as_view(), name='update-checked-by'),
     
     
     path('api/grv/data/',GRVaddView.as_view()),
@@ -161,6 +162,9 @@ urlpatterns = [
     path('api/bulk/upload/orders/',OrderBulkUploadAPIView.as_view()),
     path('api/bulk/upload/customers/',CustomerUploadView.as_view()),
     path('invoice/<int:pk>/', GenerateInvoice, name='generate_invoice'),
+    path('invoice/',Invo,name="invoice"),
+    path('deliverynote/',Deliverynote,name="deliverynote"),
+    path('adress/',Adress,name="adress"),
 
 
     path('api/warehouse/add/',WarehouseAddView.as_view()),
