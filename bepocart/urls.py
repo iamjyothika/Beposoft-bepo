@@ -9,3 +9,4 @@ urlpatterns = [
     path('emi/', EmiView.as_view(), name='emi'),
 ]
 
+
