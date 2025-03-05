@@ -233,6 +233,9 @@ class AssetsAPIView(BaseTokenView):
             return Response({"assets": assets}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+        
 class LiabilitiesAPIView(BaseTokenView):
     def get(self, request):
         try:
