@@ -17,9 +17,9 @@ class Loan(models.Model):
     enddate = models.DateField(null=True, blank=True)
 
     # New fields to store calculated values
-    emi_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Calculated EMI amount")
-    total_interest = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Total interest payable over the tenure")
-    total_payment = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, help_text="Total payment (principal + interest)")
+    emi_amount = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, help_text="Calculated EMI amount")
+    total_interest = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, help_text="Total interest payable over the tenure")
+    total_payment = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True, help_text="Total payment (principal + interest)")
 
     def calculate_emi(self):
         """Calculate EMI using the standard formula."""
