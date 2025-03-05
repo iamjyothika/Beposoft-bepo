@@ -22,3 +22,12 @@ class LoanSerializer(serializers.ModelSerializer):
         return obj.calculate_emi()      
 
 
+class ProductAssetsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Products
+        fields = ["name", "stock", "landing_cost"]
+
+class ExpenseAssetsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseModel
+        fields = ["name", "quantity", "amount"]
