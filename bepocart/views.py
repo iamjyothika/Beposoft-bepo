@@ -233,3 +233,27 @@ class AssetsAPIView(BaseTokenView):
             return Response({"assets": assets}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class LiabilitiesAPIView(BaseTokenView):
+    def get(self, request):
+        try:
+            loans = Loan.objects.all()
+            
+            liabilities_data = []
+            for loan in loans:
+                # Fetching EMI-related expenses for this loan
+                expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("amount")
+                total_emi_paid = sum(exp["amount"] for exp in expenses)
+                
+                # Ensuring total_payment and total_amount_paid are not None before subtraction
+                total_payment = loan.total_payment or Decimal(0)
+                total_amount_paid = (loan.down_payment or Decimal(0)) + total_emi_paid
+                pending_amount = total_payment - total_amount_paid
+                
+                liabilities_data.append({
+                    "emi_name": loan.emi_name,
+                    "pending_amount": round(pending_amount, 2)
+                })
+            
+            return Response({"liabilities": liabilities_data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
