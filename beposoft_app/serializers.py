@@ -906,12 +906,28 @@ class WareHouseSerializer(serializers.ModelSerializer):
         
 
 
+
 class ExpenseSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = ExpenseModel
         fields = "__all__"
-        
 
+class ExpenseSerializerExpectEmi(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ExpenseModel
+        fields = ['id','company','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+
+     # ✅ Always return validated data
+
+
+
+        
+      
+     
+
+    
 
 class ExpenseModelsSerializers(serializers.ModelSerializer):
     company = CompanyDetailsSerializer(read_only=True)
@@ -919,7 +935,7 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
     bank = Bankserializers(read_only=True)
     class Meta :
         model = ExpenseModel
-        fields = ['id','company','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+        fields = ['id','company','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types']
         
         
         
