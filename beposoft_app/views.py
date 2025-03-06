@@ -28,6 +28,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from datetime import date
 from rest_framework.pagination import PageNumberPagination
+from bepocart.models import *
 
 
 logger = logging.getLogger(__name__)
@@ -2528,7 +2529,7 @@ class ExpensAddView(BaseTokenView):
             print(expense)
             if expense.is_valid():
                 expense.save()
-                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data}, status=status.HTTP_200_OK)
+                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data},status=status.HTTP_200_OK)
             return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2539,7 +2540,7 @@ class ExpensAddView(BaseTokenView):
             if error_response:
                 return error_response
             expense_data = ExpenseModel.objects.all()
-            serializer = ExpenseModelsSerializers(expense_data, many=True)
+            serializer =  ExpenseModelsSerializers(expense_data, many=True)
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2556,6 +2557,22 @@ class ExpensAddViewExpectEmi(BaseTokenView):
             if expense.is_valid():
                 expense.save()
                 return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data}, status=status.HTTP_200_OK)
+            return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExpensAddAssestView(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense=ExpenseSerializerAssest(data=request.data)
+            print(expense)
+            if expense.is_valid():
+                expense.save()
+                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data},status=status.HTTP_200_OK)
             return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2963,10 +2980,6 @@ class CODBillsView(BaseTokenView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
 
-
-        
-            
-    
 
 class ProductSalesReportView(APIView):
     def get(self, request):

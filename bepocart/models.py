@@ -4,6 +4,11 @@ from beposoft_app.models import*
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
+
+class Category(models.Model):
+    category_name = models.CharField(max_length=100,null=True)
+
+
 class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     principal = models.DecimalField(max_digits=15, decimal_places=2, help_text="Total loan amount")
@@ -71,6 +76,7 @@ class ExpenseModel(models.Model):
     company=models.ForeignKey(Company,on_delete=models.CASCADE, related_name="company")
     payed_by=models.ForeignKey(User,on_delete=models.CASCADE, related_name="payed_by")
     bank=models.ForeignKey(Bank,on_delete=models.CASCADE,related_name="banks")
+    category=models.ForeignKey(Category,on_delete=models.CASCADE,null=True)
     name=models.CharField(max_length=100,null=True)
     quantity=models.IntegerField(null=True,blank=True)
     purpose_of_payment=models.CharField(max_length=100,choices=PURPOSE_CHOICES,null=True)
@@ -90,3 +96,4 @@ class ExpenseModel(models.Model):
 
     def __str__(self):
         return f"Expense: {self.amount} for {self.purpose_of_payment} on {self.expense_date}"
+    
