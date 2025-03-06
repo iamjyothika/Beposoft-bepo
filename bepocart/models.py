@@ -89,4 +89,4 @@ class ExpenseModel(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Expense: {self.amount} for {self.purpose_of_payment} on {self.expense_date}"
+        return f"Expense: {self.amount} for {self.purpose_of_payment} on {self.expense_date}" 

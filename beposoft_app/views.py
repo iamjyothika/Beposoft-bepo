@@ -132,7 +132,7 @@ class UserLoginAPIView(APIView):
     def handle(self, *args, **kwargs):
         today = now().date()
         staff_members = User.objects.all()
-
+ 
         for staff in staff_members:
             # Create attendance for staff if it doesn't exist for today
             Attendance.objects.get_or_create(staff=staff, date=today, defaults={"attendance_status": "Present"})
@@ -3737,68 +3737,107 @@ class StaffBasedCustomers(BaseTokenView):
 
 
 
-def GenerateInvoice(request,pk):
+def GenerateInvoice(request, pk):
     order = Order.objects.filter(pk=pk).first()
-    items = OrderItem.objects.filter(order=order) 
-    totalamount=0
+    items = OrderItem.objects.filter(order=order)
+    
+    total_amount = 0
+    total_tax_amount = 0
+    
     for item in items:
-        tax_rate = item.product.tax 
+        tax_rate = item.product.tax or 0.0
         price_without_tax = (
-    item.product.selling_price / (1 + tax_rate / 100)
-    if item.product.selling_price is not None and tax_rate
-    else item.product.selling_price
-)
-
-       
+            item.product.selling_price / (1 + tax_rate / 100)
+            if item.product.selling_price else 0.0
+        )
         
         tax_amount = (
-    item.product.selling_price - price_without_tax
-    if item.product.selling_price is not None and price_without_tax is not None
-    else 0.0  # Or set an appropriate default value
-)
-        item.final_price = (
-    (item.product.selling_price or 0.0) - item.discount
-    if item.product.selling_price is not None
-    else 0.0  # Default value if selling_price is None
-)
-
-        item.total = (
-    (item.final_price or 0.0) * (item.quantity or 0)
-)
-        item.tax_amount = tax_amount or 0.0
-        totalamount+= item.total
-    shipping_charge = order.shipping_charge
-    grand_total = totalamount + shipping_charge
-
-
+            item.product.selling_price - price_without_tax
+            if item.product.selling_price else 0.0
+        )
         
-
-
+        final_price = (item.product.selling_price or 0.0) - (item.discount or 0.0)
+        total = final_price * (item.quantity or 0)
         
-        # Replace with actual logic for shippi
+        item.final_price = final_price
+        item.total = total
+        item.tax_amount = tax_amount
         
-        
-       
-
-    # Pass data to the template
+        total_amount += total
+        total_tax_amount += tax_amount
+    
+    shipping_charge = order.shipping_charge or 0.0
+    grand_total = total_amount + shipping_charge
+    # balance = grand_total - (order.advance_paid or 0.0)
+    
+    # Context data to pass to the template
     context = {
-        "items" :items,
-        "order":order,
-        "totalamount":totalamount,
-        "shipping_charge":order.shipping_charge,
-        "grand_total":grand_total,
-
-      
+        "order": order,
+        "items": items,
+        "totalamount": total_amount,
+        "total_tax_amount": total_tax_amount,
+        "shipping_charge": shipping_charge,
+        "grand_total": grand_total,
+        # "balance": balance,
     }
-    return render(request, 'invoice.html',context)
+    
+    return render(request, 'invo.html', context)
 
-def Invo(request):
-    return render (request,"invo.html")
-def Deliverynote(request):
-    return render(request,"deliverynote.html")
+# def Invo(request):
+#     return render (request,"invo.html")
+def Deliverynote(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    warehouse_items = OrderItem.objects.filter(order=order)
 
-def Adress(request):
-    return render(request,"address.html")
+    # Fetching associated company details
+    company = order.company  
+
+    # Fetching warehouse details
+    warehouse = Warehousedata.objects.filter(order=order).first()  # Assuming one warehouse per order
+
+    # Fetching product details for each warehouse item
+    for item in warehouse_items:
+        item.product = get_object_or_404(Products, id=item.product_id)  # Fetch product details
+
+    context = {
+        "order": order,
+        "warehouse_items": warehouse_items,
+        "company": company,
+        "warehouse": warehouse,
+    }
+    
+    return render(request, "deliverynote.html", context)
+
+
+
+def generate_shipping_label(request, order_id):
+    # Fetch the order
+    order = get_object_or_404(Order, id=order_id)
+
+    # Fetch order items
+    order_items = OrderItem.objects.filter(order=order)
+
+    # Fetch the shipping details for the order's customer
+    shipping_data = get_object_or_404(Shipping, customer=order.customer)
+
+    # Fetch warehouse data for the order (assuming one warehouse per order)
+    warehouse = Warehousedata.objects.filter(order=order).first()
+
+    # Fetch product details for each order item
+    for item in order_items:
+        item.product = get_object_or_404(Products, id=item.product_id)
+
+    context = {
+        "order": order,
+        "order_items": order_items,
+        "shipping_data": shipping_data,
+        "warehouse": warehouse,
+        "speed": "0000053866",  # Can be dynamically generated if needed
+    
+    }
+    
+    return render(request, "address.html", context)
+
 
 class ManagerUnderCustomer(BaseTokenView):
     def get(self, request):
