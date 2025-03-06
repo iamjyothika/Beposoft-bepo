@@ -27,7 +27,7 @@ admin.site.register(Warehousedata)
 admin.site.register(ParcalService)
 admin.site.register(Attendance)
 admin.site.register(WareHouse)
-
+admin.site.register(PerfomaInvoiceOrderItem)
 
 
 

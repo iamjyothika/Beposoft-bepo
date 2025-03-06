@@ -43,33 +43,33 @@
 <body>
     <div class="invoice-container" id="invoice">
         <div class="text-center invoice-header">
-            <h2>MICHAEL EXPORT AND IMPORT PRIVATE LIMITED</h2>
-            <p>H.NO./X/153-B, Floor-Jubilee Nagar, Ernakulam, Kerala, 682003</p>
-            <p>Mobile: +91 95267 92642, Email: Accounts@bepositiveracing.com</p>
-            <p class="fw-bold">GSTIN: 32AACJMB151GZZH</p>
+            <h2>{{ company.name }}</h2>
+            <p>{{ company.address }}</p>
+            <p>Mobile: {{ company.phone }}, Email: {{ company.email }}</p>
+            <p class="fw-bold">GSTIN: {{ order.company.gst }}</p>
         </div>
         
         <div class="row mt-3">
             <div class="col-md-6">
-                <p><strong>Invoice Number:</strong> MIK/03/08518</p>
-                <p><strong>Sales Person:</strong> Sulfi</p>
+                <p><strong>Invoice Number:</strong> {{ order.invoice }}</p>
+                <p><strong>Sales Person:</strong> {{ order.manage_staff}}</p>
             </div>
             <div class="col-md-6 text-end">
-                <p><strong>Invoice Family:</strong> Bepocart</p>
-                <p><strong>Invoice Date:</strong> 01-Mar-2025</p>
+                <p><strong>Invoice Family:</strong> {{ order.family.name }}</p>
+                <p><strong>Invoice Date:</strong> {{ order.order_date }}</p>
             </div>
         </div>
         
         <div class="row border p-3 my-3">
             <div class="col-md-6">
                 <h5>Bill to</h5>
-                <p>Lt dr shajimon IJ<br>96/A, Puthiyedath vila veedu, RITHUVASANTHAM, Thrissur, Kerala, 680683</p>
-                <p><strong>Phone:</strong> 9388575318</p>
+                <p>{{order.customer.name}}<br>{{order.customer.address }}</p>
+                <p><strong>Phone:</strong> {{ order.customer.phone }}</p>
             </div>
             <div class="col-md-6">
                 <h5>Ship to</h5>
-                <p>Lt dr shajimon IJ<br>96/A, Puthiyedath vila veedu, RITHUVASANTHAM, Thrissur, Kerala, 680683</p>
-                <p><strong>Phone:</strong> 9388575318</p>
+                <p>{{order.billing_address.name}}<br>{{order.billing_address.address }}</p>
+                <p><strong>Phone:</strong> {{ order.billing_address.phone }}</p>
             </div>
         </div>
         
@@ -83,39 +83,38 @@
                 </tr>
             </thead>
             <tbody>
+                {% for warehouse_item in warehouse_items %}
                 <tr>
-                    <td>1</td>
-                    <td><img src="wheel.png" alt="MERCOA WHEEL" width="50"></td>
-                    <td>MERCOA WHEEL - 12 T, Black</td>
-                    <td>4 NOS</td>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        {% if warehouse_item.product.image %}
+                            <img src="{{ warehouse_item.product.image.url }}" alt="{{ warehouse_item.product.name }}" width="50">
+                        {% else %}
+                            No Image
+                        {% endif %}
+                    </td>
+                    <td>{{ warehouse_item.product.name }}</td>
+                    <td>{{ warehouse_item.weight }} {{ warehouse_item.product.unit }}</td>
                 </tr>
-                <tr>
-                    <td>2</td>
-                    <td><img src="wheel.png" alt="MERCOA WHEEL" width="50"></td>
-                    <td>MERCOA WHEEL - 12 T, Red</td>
-                    <td>4 NOS</td>
-                </tr>
-                <tr>
-                    <td>3</td>
-                    <td><img src="chain.png" alt="KMC CYCLE CHAIN" width="50"></td>
-                    <td>KMC CYCLE CHAIN - X8</td>
-                    <td>4 NOS</td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
+
         
-        <p class="text-end fw-bold">Total Products: 12</p>
+        <p class="text-end fw-bold">Total Products: {{ warehouse_items|length }}</p>
         
         <div class="row my-3">
             <div class="col-md-4">
-                <p><strong>Packed By:</strong> __________</p>
+                <p><strong>Packed By:</strong> {{ warehouse.packed_by}}</p>
             </div>
             <div class="col-md-4">
-                <p><strong>Verified By:</strong> __________</p>
+                <p><strong>Verified By:</strong> {{ warehouse.verified_by}}</p>
             </div>
             <div class="col-md-4 text-end">
-                <p><strong>Approved By:</strong> __________</p>
+                <p><strong>Approved By:</strong></p>
+                <img src="{{ warehouse.checked_by.signatur_up.url }}" alt="Signature" style="max-width: 70px; height: auto;">
             </div>
+            
         </div>
     </div>
 
@@ -147,4 +146,3 @@
     </script>
 </body>
 </html>
-
