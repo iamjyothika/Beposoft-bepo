@@ -58,16 +58,16 @@
 <body>
     <div class="container mt-4 pdf-container" id="pdf-content">
         <div class="text-center">
-            <span class="speed">SPEED - 0000053866</span>
+            <span class="speed">SPEED - {{ speed }}</span>
         </div>
         <div class="mt-3">
             <p class="to">TO</p>
             <p class="address">
-                Lt dr shajimon IJ<br>
-                96/A, puthiyedathan vila veedu ( RITHUVASANTHAM ) near wisdom builders avittathur irinjalakuda<br>
-                Pin: 680683, Thrissur, Kerala<br>
-                Phone: 9388575318<br>
-                Alternate Number: 
+                {{ shipping_data.name }}<br>
+                {{ shipping_data.address }}<br>
+                Pin: {{ shipping_data.zipcode }}, {{ shipping_data.city }}, {{ shipping_data.state.name }}<br>
+                Phone: {{ shipping_data.phone }}<br>
+                Email: {{ shipping_data.email }}
             </p>
         </div>
         <div class="mt-3">
@@ -82,13 +82,18 @@
         </div>
         <p class="small">This article does not contain any item prohibited under Indian post office act 1898/post SIA Guide.</p>
         <div class="content">
-            <p><strong>Content:</strong> Cycling</p>
-            <p><strong>Date:</strong></p>
+            <p><strong>Content:</strong>{{order.family.name}}</p>
+            <ul>
+                {% for product in products %}
+                    <li>{{ product.name }} - {{ product.unit }} - {{ product.stock }} in stock</li>
+                {% endfor %}
+            </ul>
+            <p><strong>Date:</strong> {{ warehouse_data.shipped_date }}</p>
         </div>
         <div class="signature">
             <p class="fw-bold">SIGNATURE</p>
             <p>Name: PRASHANT</p>
-            <p>Phone Number: 6253401717</p>
+            <p>Phone Number:6253401717</p>
         </div>
         <div class="no-prohibited">
             NO PROHIBITED ITEMS
@@ -97,8 +102,8 @@
             Explosives, flammable & inflammable chemicals, gases, compressed liquids, etc. Do not contain any prohibited items.
         </p>
         <div class="mt-3">
-            <p><strong>AW = 1.54 Kg.</strong></p>
-            <p><strong>VW = (0 X 0 X 0 / 6000 = 0)</strong></p>
+            <p><strong>AW = .54 Kg.</strong></p>
+            <p><strong>VW = ({{ warehouse_data.length }} X {{ warehouse_data.breadth }} X {{ warehouse_data.height }} / 6000)</strong></p>
         </div>
     </div>
     <div class="container mt-4 text-center">

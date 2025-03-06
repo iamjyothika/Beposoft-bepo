@@ -20,8 +20,8 @@
             padding-bottom: 20px;
         }
         #invoice {
-            width: 210mm; /* A4 Width */
-            min-height: 297mm; /* A4 Height */
+            width: 210mm;
+            min-height: 297mm;
             padding: 20px;
             border: 1px solid #000;
             background: #fff;
@@ -31,16 +31,15 @@
 </head>
 <body>
     <div class="container mt-5">
-        <!-- Invoice Container -->
         <div class="container" id="invoice">
             <div class="text-center">
-                <h2>MICHAEL EXPORT AND IMPORT PRIVATE LIMITED</h2>
-                <p>H.NO./X/153-B, Floor-Jubilee Nagar, Ernakulam, Kerala, 682003</p>
-                <p>Mobile: +91 95267 92642, Email: Accounts@bepositiveracing.com</p>
-                <p><strong>GSTIN: 32AAJCM8151G2ZH</strong></p>
+                <h2>{{order.company}}</h2>
+                <p>{{ order.company.address }}</p>
+                <p>Mobile: {{ order.company.phone }}, Email: {{ order.company.email }}</p>
+                <p><strong>GSTIN: {{ order.company.gst }}</strong></p>
                 <div class="d-flex justify-content-between">
-                    <p><strong>Invoice Number: MIK0308518</strong></p>
-                    <p><strong>Invoice Date: 01-Mar-2025</strong></p>
+                    <p><strong>Invoice Number: {{ order.invoice }}</strong></p>
+                    <p><strong>Invoice Date: {{ order.updated_at|date:"d-M-Y" }}</strong></p>
                 </div>
             </div>
             
@@ -53,8 +52,8 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Lt of Shrijinom LJ<br>96/A, Puthiyedathan Vila Veedu, RITHUVASANTHAM, near Wisdom Builders, Avittathur Irinjalakuda, Thrissur, Kerala, 680863<br>Phone: 9388755318</td>
-                        <td>96/A, Puthiyedathan Vila Veedu, RITHUVASANTHAM, near Wisdom Builders, Avittathur Irinjalakuda, Thrissur, Kerala, 680863<br>Phone: 9388755318</td>
+                        <td>{{order.customer.name}}<br>{{order.customer.address }}<br>Phone: {{ order.customer.phone }}</td>
+                        <td>{{order.billing_address.name}}<br>{{order.billing_address.address }}<br>Phone: {{ order.billing_address.phone }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -74,39 +73,19 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for item in items %}
                     <tr>
-                        <td>MEROCA WHEEL - 12 T, Black</td>
-                        <td>87149100</td>
-                        <td>616.07</td>
-                        <td>12</td>
-                        <td>0</td>
-                        <td>690</td>
-                        <td>0.00</td>
-                        <td>4</td>
-                        <td>0</td>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.product.hsn_code }}</td>
+                        <td>{{ item.product.selling_price|floatformat:2 }}</td>
+                        <td>{{ item.product.tax }}</td>
+                        <td>{{ item.tax_amount|floatformat:2 }}</td>
+                        <td>{{ item.final_price|floatformat:2 }}</td>
+                        <td>{{ item.product.selling_price|floatformat:2 }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.total|floatformat:2 }}</td>
                     </tr>
-                    <tr>
-                        <td>MEROCA WHEEL - 12 T, Red</td>
-                        <td>87149100</td>
-                        <td>616.07</td>
-                        <td>12</td>
-                        <td>36.36</td>
-                        <td>308.04</td>
-                        <td>345</td>
-                        <td>4</td>
-                        <td>1380</td>
-                    </tr>
-                    <tr>
-                        <td>KMC CYCLE CHAIN - X8</td>
-                        <td>87149110</td>
-                        <td>705.36</td>
-                        <td>12</td>
-                        <td>84.64</td>
-                        <td>705.36</td>
-                        <td>790.00</td>
-                        <td>4</td>
-                        <td>3160</td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
             
@@ -120,21 +99,23 @@
                 <tbody>
                     <tr>
                         <td>
-                            <strong>A/C Name:</strong> Michael Export & Import Pvt Ltd.<br>
-                            <strong>Bank A/C:</strong> 850120110000168<br>
-                            <strong>Bank Name:</strong> Bank Of India<br>
-                            <strong>Bank IFSC:</strong> BKID0008501<br>
-                            <strong>Branch:</strong> Bank Of India, MG Road Branch, Cochin
+                            <strong>A/C Name:</strong> {{ order.bank.created_user }}<br>
+                            <strong>Bank A/C:</strong> {{ order.bank.account_number }}<br>
+                            <strong>Bank Name:</strong> {{ order.bank.name }}<br>
+                            <strong>Bank IFSC:</strong> {{ order.bank.ifsc_code }}<br>
+                            <strong>Branch:</strong> {{ order.bank.branch }}
                         </td>
                         <td>
-                            <strong>Total:</strong> 4540<br>
-                            <strong>Discounted Amount:</strong> 4140<br>
-                            <strong>Net Amount Before Tax:</strong> 4036.36<br>
-                            <strong>Total Tax Amount:</strong> 485.4<br>
-                            <strong>Shipping Charge:</strong> 0<br>
-                            <strong>Total Payable Amount:</strong> 4540<br>
-                            <strong>Advance Paid:</strong> 0<br>
-                            <strong>Balance:</strong> 4540
+                            <strong>Total:</strong> {{ totalamount|floatformat:2 }}<br>
+                            {% for item in items %}
+                            <strong>Discounted Amount:</strong> {{ item.discount|floatformat:2 }}<br>
+                            <strong>Net Amount Before Tax:</strong> {{ item.total|floatformat:2 }}<br>
+                            <strong>Total Tax Amount:</strong> {{ item.tax_amount|floatformat:2 }}<br>
+                            {% endfor %}
+                            <strong>Shipping Charge:</strong> {{ order.shipping_charge|floatformat:2 }}<br>
+                            <strong>Total Payable Amount:</strong> {{ grand_total|floatformat:2 }}<br>
+                            <!-- <strong>Advance Paid:</strong> {{ order.advance_paid|floatformat:2 }}<br> -->
+                            <!-- <strong>Balance:</strong> {{ order.balance|floatformat:2 }} -->
                         </td>
                     </tr>
                 </tbody>
@@ -146,7 +127,6 @@
             </div>
         </div> 
 
-        <!-- Download Button -->
         <div class="button-container">
             <button class="btn btn-primary no-print" id="downloadBtn" onclick="downloadInvoice()">Download Invoice</button>
         </div>
@@ -155,22 +135,14 @@
     <script>
         function downloadInvoice() {
             document.getElementById("downloadBtn").style.display = "none";
-
-            html2canvas(document.querySelector("#invoice"), {
-                scale: 3, // High resolution
-                useCORS: true, // To avoid cross-origin issues
-                logging: false
-            }).then(canvas => {
+            html2canvas(document.querySelector("#invoice"), { scale: 3, useCORS: true }).then(canvas => {
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF("p", "mm", "a4");
-
                 const imgData = canvas.toDataURL("image/png");
                 const imgWidth = 210;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
                 pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
                 pdf.save("invoice.pdf");
-
                 document.getElementById("downloadBtn").style.display = "block";
             });
         }
