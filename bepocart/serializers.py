@@ -31,3 +31,9 @@ class ExpenseAssetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseModel
         fields = ["name", "quantity", "amount"]
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = "__all__"
+       

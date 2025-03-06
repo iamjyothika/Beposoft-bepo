@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from beposoft_app.models import Products
-from .serializers import ProductSerilizers,ProductAssetsSerializer,ExpenseAssetsSerializer
+from .serializers import *
 from rest_framework.response import Response
 from .models import*
 from .serializers import LoanSerializer
@@ -12,6 +12,7 @@ from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, DecodeError
 from django.conf import settings
 from beposoft_app.models import User
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 
 class ProductListView(APIView):
@@ -230,6 +231,119 @@ class AssetsAPIView(BaseTokenView):
             
             assets = products_data + expenses_data
             
+            return Response({"assets": assets}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+        
+class LiabilitiesAPIView(BaseTokenView):
+    def get(self, request):
+        try:
+            loans = Loan.objects.all()
+            
+            liabilities_data = []
+            for loan in loans:
+                # Fetching EMI-related expenses for this loan
+                expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("amount")
+                total_emi_paid = sum(exp["amount"] for exp in expenses)
+                
+                # Ensuring total_payment and total_amount_paid are not None before subtraction
+                total_payment = loan.total_payment or Decimal(0)
+                total_amount_paid = (loan.down_payment or Decimal(0)) + total_emi_paid
+                pending_amount = total_payment - total_amount_paid
+                
+                liabilities_data.append({
+                    "emi_name": loan.emi_name,
+                    "pending_amount": round(pending_amount, 2)
+                })
+            
+            return Response({"liabilities": liabilities_data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class CategoryaddView(BaseTokenView):
+    def post(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            serializer = CategorySerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Category created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def get(self,request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            categories = Category.objects.all()
+            serializer = CategorySerializer(categories, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class Categorydetailview(BaseTokenView):
+    def put(self,request,pk):
+   
+
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            categorry=Category.objects.get(pk=pk)
+            serializer = CategorySerializer(categorry,data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'message': 'Category updated successfully!', 'data': serializer.data}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AssetReport(BaseTokenView):
+    def get(self, request):
+        try:
+            # ✅ Fetch Products
+            products = Products.objects.all()
+            products_data = ProductAssetsSerializer(products, many=True).data
+
+            # ✅ Fetch Expenses related to assets
+            expenses = ExpenseModel.objects.filter(asset_types='assets')
+
+            # ✅ Group expenses by category (without "items" key)
+            category_expenses = defaultdict(list)
+            for expense in expenses:
+                if expense.category and expense.category.category_name:
+                    category_name = expense.category.category_name
+                    category_expenses[category_name].append({
+                        "name": expense.name,
+                        "quantity": expense.quantity,
+                        "amount":expense.amount
+                       
+            })
+            assets = [
+                {
+                    "category": "Products",
+                    "products": products_data
+                }
+            ] 
+            for category, items in category_expenses.items():
+                assets.append({
+                    "category": category,
+                    "products": items
+                })       
+           
+               
+                
+
             return Response({"assets": assets}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

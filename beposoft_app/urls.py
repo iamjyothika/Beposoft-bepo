@@ -132,7 +132,8 @@ urlpatterns = [
 
     path('api/expense/add/',ExpensAddView.as_view()),
     path('api/expense/get/<int:pk>/',ExpenseUpdate.as_view()),
-     path('api/expense/addexpectemi/',ExpensAddViewExpectEmi.as_view()),
+    path('api/expense/addexpectemi/',ExpensAddViewExpectEmi.as_view()),
+    path('api/assest/',ExpensAddAssestView.as_view()),
 
 
     path('api/salesreport/',SalesReportView.as_view()),
@@ -158,7 +159,6 @@ urlpatterns = [
     
     path('api/parcal/service/',ParcalServiceView.as_view()),
     path('api/parcal/<int:pk>/service/',EditParcalService.as_view()),
-    
     path('api/bulk/upload/products/',ProductBulkUploadAPIView.as_view()),
     path('api/bulk/upload/orders/',OrderBulkUploadAPIView.as_view()),
     path('api/bulk/upload/customers/',CustomerUploadView.as_view()),

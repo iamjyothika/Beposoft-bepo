@@ -7,7 +7,8 @@ from datetime import datetime
 from django.db.models import F, Sum, FloatField
 from django.db.models.functions import Cast
 from datetime import date
-from bepocart.models import*
+from bepocart.models import *
+from bepocart.serializers import *
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -717,6 +718,7 @@ class CompanyDetailsSerializer(serializers.ModelSerializer):
         model = Company
         fields = "__all__"
         
+        
 
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -908,11 +910,12 @@ class WareHouseSerializer(serializers.ModelSerializer):
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
+  
 
     class Meta:
         model = ExpenseModel
         fields = "__all__"
-
+   
 class ExpenseSerializerExpectEmi(serializers.ModelSerializer):
     
     class Meta:
@@ -921,6 +924,11 @@ class ExpenseSerializerExpectEmi(serializers.ModelSerializer):
 
      # ✅ Always return validated data
 
+class ExpenseSerializerAssest(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ExpenseModel
+        fields = ['id','company','categoryname','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
 
 
         
@@ -933,10 +941,19 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
     company = CompanyDetailsSerializer(read_only=True)
     payed_by = UserUpdateSerilizers(read_only=True)
     bank = Bankserializers(read_only=True)
-    class Meta :
+    categoryname = serializers.SerializerMethodField()  
+    class Meta:
         model = ExpenseModel
-        fields = ['id','company','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types']
-        
+        fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types']
+    
+    
+    def get_categoryname(self, obj):
+        """
+        Fetches the category name from the related Category model.
+        Returns None if category is not set.
+        """
+        return obj.category.category_name if obj.category else None
+    
         
         
 class ParcalSerializers(serializers.ModelSerializer):
