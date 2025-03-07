@@ -698,9 +698,10 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
     payment_receipts =  PaymentRecieptsViewSerializers(many=True,read_only=True)
     customerID = serializers.IntegerField(source="customer.pk")
     perfoma_items = PerfomaInvoiceProducts(many=True,read_only=True)
+    company_name=serializers.CharField(source="company.name")
     class Meta:
         model = PerfomaInvoiceOrder
-        fields = ["id","manage_staff","company","customer",
+        fields = ["id","manage_staff","company","company_name","customer",
                   "invoice","billing_address",
                   "shipping_mode","code_charge","order_date","family",
                   "state","status","total_amount",
@@ -928,7 +929,7 @@ class ExpenseSerializerAssest(serializers.ModelSerializer):
     
     class Meta:
         model = ExpenseModel
-        fields = ['id','company','categoryname','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+        fields = ['id','company','category','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
 
 
         

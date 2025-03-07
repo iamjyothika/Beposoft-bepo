@@ -562,32 +562,27 @@ class PaymentReceipt(models.Model):
     
 
 class PerfomaInvoiceOrder(models.Model):
-    COMPANY_CHOICES = [
-        ('MICHEAL IMPORT EXPORT PVT LTD', 'MICHEAL IMPORT EXPORT PVT LTD'),
-        ('BEPOSITIVERACING PVT LTD', 'BEPOSITIVERACING PVT  LTD'),
-    ]
-
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
-    warehouses_obj=models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True)
-    company = models.CharField(max_length=100, choices=COMPANY_CHOICES, default='MICHEAL IMPORT EXPORT PVT LTD')
-    customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="perfoma_customer")
+    warehouses_obj = models.ForeignKey(WareHouse, on_delete=models.CASCADE, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="perfoma_companies", null=True)
+    customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name="perfoma_customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
-    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE,related_name="perfoma_billing_address")
+    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE, related_name="perfoma_billing_address")
     order_date = models.CharField(max_length=100)
     family = models.ForeignKey(Family, on_delete=models.CASCADE)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
-    code_charge = models.IntegerField(default=0,null=True)
-    shipping_mode = models.CharField(max_length=100,null=True)
-    shipping_charge = models.IntegerField(default=0,null=True)
+    code_charge = models.IntegerField(default=0, null=True)
+    shipping_mode = models.CharField(max_length=100, null=True)
+    shipping_charge = models.IntegerField(default=0, null=True)
     status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),
         ('Shipped', 'Shipped'),
-        ('Invoice Created','Invoice Created'),
-        ('Invoice Approved','Invoice Approved'),
-        ('Waiting For Confirmation','Waiting For Confirmation'),
-        ('To Print','To Print'),
-        ('Invoice Rejectd','Invoice Rejectd'),
+        ('Invoice Created', 'Invoice Created'),
+        ('Invoice Approved', 'Invoice Approved'),
+        ('Waiting For Confirmation', 'Waiting For Confirmation'),
+        ('To Print', 'To Print'),
+        ('Invoice Rejected', 'Invoice Rejected'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
@@ -595,7 +590,6 @@ class PerfomaInvoiceOrder(models.Model):
         ('Return', 'Return'),
     ], default='Pending')
     total_amount = models.FloatField()
-    
     note = models.TextField(null=True)
     
     def save(self, *args, **kwargs):
@@ -605,29 +599,30 @@ class PerfomaInvoiceOrder(models.Model):
         super().save(*args, **kwargs)
 
     def generate_invoice_number(self):
-        prefix = ""
-        if self.company == 'MICHEAL IMPORT EXPORT PVT LTD':
-            prefix = "MI-"
-        elif self.company == 'BEPOSITIVERACING PVT LTD':
-            prefix = "BR-"
+        if not self.company:
+            raise ValueError("Company must be set to generate an invoice number.")
         
+        prefix = self.company.prefix  # Retrieve prefix from the associated Company
         number = self.get_next_invoice_number(prefix)
         invoice_number = f"{prefix}{number}"
-        print(f"Invoice number generated: {invoice_number}")
         return invoice_number
 
     def get_next_invoice_number(self, prefix):
-        # Get the highest existing invoice number for the given prefix
         highest_invoice = PerfomaInvoiceOrder.objects.filter(invoice__startswith=prefix).order_by('invoice').last()
+        
         if highest_invoice:
-            number = int(highest_invoice.invoice.split('-')[-1]) + 1
+            last_number = highest_invoice.invoice[len(prefix):]  # Remove the prefix
+            try:
+                number = int(last_number) + 1 
+            except ValueError:
+                number = 1  
         else:
-            number = 1
+            number = 1  # If no previous invoice exists, start with 1
+        
         return str(number).zfill(6)  # Zero-pad to 6 digits
 
     def __str__(self):
-        return f"Order {self.invoice} by {self.customer}"
-    
+        return f"Perfoma Invoice {self.invoice} by {self.customer}"    
 
 
 class PerfomaInvoiceOrderItem(models.Model):
