@@ -928,7 +928,7 @@ class ExpenseSerializerAssest(serializers.ModelSerializer):
     
     class Meta:
         model = ExpenseModel
-        fields = ['id','company','categoryname','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+        fields = ['id','company','category','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
 
 
         
