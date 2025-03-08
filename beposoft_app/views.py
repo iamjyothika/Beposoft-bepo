@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 import jwt
+import requests
 import logging
 import itertools
 from .serializers import *
@@ -29,6 +30,7 @@ from django.shortcuts import render
 from datetime import date
 from rest_framework.pagination import PageNumberPagination
 from bepocart.models import *
+from django.core.files.base import ContentFile
 
 
 logger = logging.getLogger(__name__)
@@ -3213,7 +3215,7 @@ class ProductBulkUploadAPIView(BaseTokenView):
             return Response({"error": f"Error reading the file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Ensure the expected columns are in the file
-        required_columns = ['name', 'hsn_code', 'purchase_rate', 'selling_price', 'stock', 'tax', 'family', 'unit','groupID','type']
+        required_columns = ['name','hsn_code','family','warehouse','type','unit','purchase_rate','tax','image','selling_price','landing_cost','retail_price','stock','color','size','groupID','PURCHASE_TYPES','STATUS_TYPES']
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             return Response({"error": f"Missing columns: {', '.join(missing_columns)}"}, status=status.HTTP_400_BAD_REQUEST)
@@ -3224,27 +3226,66 @@ class ProductBulkUploadAPIView(BaseTokenView):
             try:
 
                 # Retrieve or create the family objects
-                family_names = row['family'].split(',')
-                families = Family.objects.filter(name__in=family_names)
+                family_names = str(row['family']).split(',')
+                families = []
+                for fam_name in family_names:
+                    fam, _ = Family.objects.get_or_create(name=fam_name.strip())  # Ensures family exists
+                    families.append(fam)
+
+                warehouse = None
+                if pd.notna(row['warehouse']):  # Ensure warehouse ID is not empty
+                    try:
+                        warehouse = WareHouse.objects.get(id=int(row['warehouse']))  # Convert ID to integer
+                    except WareHouse.DoesNotExist:
+                        return Response({"error": f"Warehouse ID {row['warehouse']} not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Create product instance    
+               
 
                 # Create product instance
                 product = Products(
                     name=row['name'],
                     hsn_code=row['hsn_code'],
-                    purchase_rate=row['purchase_rate'],
-                    selling_price=row['selling_price'],
-                    stock=row['stock'],
-                    tax=row['tax'],
+                   
+                    type=row['type'],
                     unit=row['unit'],
-                    groupID = row['groupID'],
-                    type = row['type'],
+                    purchase_rate=row['purchase_rate'],
+                    tax=row['tax'],
+                    # image=row['image'],
+                   
+                    selling_price=row['selling_price'],
+                    landing_cost=row['landing_cost'],
+                    retail_price=row['retail_price'],
+                    stock=row['stock'],
+                   
+                    color=row['color'] if pd.notna(row['color']) else None,
+                    size=row['size'] if pd.notna(row['size']) else None,
+                    groupID=row['groupID'] if pd.notna(row['groupID']) else None,
+                    warehouse=warehouse,
+                    purchase_type=row['PURCHASE_TYPES'].strip().capitalize() if pd.notna(row['PURCHASE_TYPES']) else 'International',
+                    approval_status=row['STATUS_TYPES'].strip().capitalize() if pd.notna(row['STATUS_TYPES']) else 'Disapproved',
+                   
+                    
+                    
+                
+                   
+                   
+                    
+                   
                     created_user= authUser  
                 )
+                if pd.notna(row['image']) and isinstance(row['image'], str) and row['image'].startswith('http'):
+                    image_url = row['image']
+                    response = requests.get(image_url)
+                    if response.status_code == 200:
+                        file_name = os.path.basename(image_url)
+                        product.image.save(file_name, ContentFile(response.content), save=False)
+
                 product.save()  # Save product
 
                 # Set families (if ManyToManyField)
-                if product.family:
-                    product.family.set(families)
+               
+                product.family.set(families)
 
                 products_data.append(product.pk)  # Add the product id to the list
             except Exception as e:
