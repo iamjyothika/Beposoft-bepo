@@ -14,6 +14,8 @@ urlpatterns = [
     path('add/assetcategory/',CategoryaddView.as_view()),
     path('update/delete/assetcategory/<int:pk>/',Categorydetailview.as_view()),
     path('get/asset/report/',AssetReport.as_view()),
+    path('add/purpose/',PurposeaddView.as_view()),
+    path('purpose/update/<int:pk>/',PurposeUpdate.as_view()),
 
 
 ]

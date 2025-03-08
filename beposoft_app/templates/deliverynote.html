@@ -39,7 +39,27 @@
             margin-top: 20px;
         }
         @media print {
-            .no-print { display: flex !important; }
+            .no-print { display: none !important; }
+        }
+        @media (max-width: 767px) {
+            .invoice-container {
+                padding: 10px;
+            }
+            .invoice-header h2 {
+                font-size: 18px;
+            }
+            .invoice-header p {
+                font-size: 12px;
+            }
+            .table th, .table td {
+                font-size: 12px;
+            }
+            .row {
+                margin-bottom: 10px;
+            }
+            .text-end {
+                text-align: left !important;
+            }
         }
     </style>
 </head>
