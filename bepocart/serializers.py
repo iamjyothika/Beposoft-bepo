@@ -23,7 +23,7 @@ class LoanSerializer(serializers.ModelSerializer):
 
 
 class ProductAssetsSerializer(serializers.ModelSerializer):
-    class Meta:
+    class Meta:  
         model = Products
         fields = ["name", "stock", "landing_cost"]
 
@@ -37,3 +37,9 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = "__all__"
        
+
+class PurposeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Choices
+        fields="__all__"
+        
