@@ -8,7 +8,8 @@ from decimal import Decimal
 class Category(models.Model):
     category_name = models.CharField(max_length=100,null=True)
 
-
+class Choices(models.Model):
+    name = models.CharField(max_length=100, null=True)
 class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     principal = models.DecimalField(max_digits=15, decimal_places=2, help_text="Total loan amount")
@@ -57,40 +58,29 @@ class Loan(models.Model):
         return f"Loan: {self.principal} at {self.annual_interest_rate}% for {self.tenure_months} months"
 
 class ExpenseModel(models.Model):
-    PURPOSE_CHOICES=[
-        ('water','Water'),
-        ('electricity','Electricity'),
-        ('salary','Salary'),
-        ('emi','EMI'),
-        ('rent','Rent'),
-        ('equipments,','Equipments'),
-        ('travel','Travel'),
-        ('others','Others'),
-        ('Other assets','Other assets')
-        
+    ASSET_CHOICES = [
+        ('assets', 'Assets'),
+        ('expenses', 'Expenses')
     ]
-    ASSET_CHOICES=[
-        ('assets','assets'),
-        ('expenses','expenses')
-    ]
-    company=models.ForeignKey(Company,on_delete=models.CASCADE, related_name="company")
-    payed_by=models.ForeignKey(User,on_delete=models.CASCADE, related_name="payed_by")
-    bank=models.ForeignKey(Bank,on_delete=models.CASCADE,related_name="banks")
-    category=models.ForeignKey(Category,on_delete=models.CASCADE,null=True)
-    name=models.CharField(max_length=100,null=True)
-    quantity=models.IntegerField(null=True,blank=True)
-    purpose_of_payment=models.CharField(max_length=100,choices=PURPOSE_CHOICES,null=True)
-    amount=models.DecimalField(max_digits=10,decimal_places=2,null=True)
-    expense_date=models.DateField()
-    transaction_id=models.CharField(max_length=100)
-    description=models.TextField()
-    added_by=models.CharField(max_length=30,null=True)
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="company")
+    payed_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payed_by")
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE, related_name="banks")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True)
+    name = models.CharField(max_length=100, null=True)
+    quantity = models.IntegerField(null=True, blank=True)
+    purpose_of_payment = models.ForeignKey(Choices, on_delete=models.SET_NULL, null=True, related_name="expenses")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    expense_date = models.DateField()
+    transaction_id = models.CharField(max_length=100)
+    description = models.TextField()
+    added_by = models.CharField(max_length=30, null=True)
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, null=True, blank=True, related_name="loan_expenses")
-    asset_types=models.CharField(max_length=100,choices=ASSET_CHOICES,null=True)
+    asset_types = models.CharField(max_length=100, choices=ASSET_CHOICES, null=True)
 
     def save(self, *args, **kwargs):
         """Ensure EMI payments are linked to a loan."""
-        if self.purpose_of_payment == 'emi' and not self.loan:
+        if self.purpose_of_payment and self.purpose_of_payment.name.lower() == 'emi' and not self.loan:
             raise ValueError("EMI payments must be associated with a loan.")
         super().save(*args, **kwargs)
 
