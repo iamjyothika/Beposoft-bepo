@@ -916,6 +916,10 @@ class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseModel
         fields = "__all__"
+        
+
+
+    
    
 class ExpenseSerializerExpectEmi(serializers.ModelSerializer):
     
@@ -929,7 +933,7 @@ class ExpenseSerializerAssest(serializers.ModelSerializer):
     
     class Meta:
         model = ExpenseModel
-        fields = ['id','company','category','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by']
+        fields = ['id','company','category','payed_by','bank','name','quantity','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','asset_types']
 
 
         

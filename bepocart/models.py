@@ -78,12 +78,19 @@ class ExpenseModel(models.Model):
     loan = models.ForeignKey(Loan, on_delete=models.CASCADE, null=True, blank=True, related_name="loan_expenses")
     asset_types = models.CharField(max_length=100, choices=ASSET_CHOICES, null=True)
 
-    def save(self, *args, **kwargs):
-        """Ensure EMI payments are linked to a loan."""
-        if self.purpose_of_payment and self.purpose_of_payment.name.lower() == 'emi' and not self.loan:
-            raise ValueError("EMI payments must be associated with a loan.")
-        super().save(*args, **kwargs)
-
+    def save(self,*args,**kwargs):
+        if self.purpose_of_payment_id:
+            purpose=Choices.objects.filter(id=self.purpose_of_payment_id).first()
+            if purpose and purpose.name.lower()=="emi" and not self.loan:
+                raise ValueError("EMI payments must be associated with a loan.")
+        super().save(*args,**kwargs)    
+    
+    
     def __str__(self):
         return f"Expense: {self.amount} for {self.purpose_of_payment} on {self.expense_date}"
+      
+
+        
+
+    
     

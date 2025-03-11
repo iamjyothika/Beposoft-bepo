@@ -42,4 +42,7 @@ class PurposeSerializer(serializers.ModelSerializer):
     class Meta:
         model=Choices
         fields="__all__"
+
+
+
         

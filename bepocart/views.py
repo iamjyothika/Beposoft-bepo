@@ -236,7 +236,6 @@ class AssetsAPIView(BaseTokenView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-        
 class LiabilitiesAPIView(BaseTokenView):
     def get(self, request):
         try:
@@ -261,6 +260,7 @@ class LiabilitiesAPIView(BaseTokenView):
             return Response({"liabilities": liabilities_data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
 
 class CategoryaddView(BaseTokenView):
