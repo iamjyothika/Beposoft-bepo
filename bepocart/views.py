@@ -155,9 +155,13 @@ class EmiExpenseView(BaseTokenView):
         """Fetch detailed EMI expenses for a specific loan."""
         loan = get_object_or_404(Loan, id=emi_id, user=user)
 
-        # Fetching EMI-related expenses
-        expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("expense_date", "amount")
-       
+        # Fetch the correct EMI-related `Choices` instance
+        emi_choice = Choices.objects.get(name__iexact="emi")
+
+        # Fetching EMI-related expenses with all required fields
+        expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=emi_choice).values(
+            "expense_date", "amount", "transaction_id", "description", "added_by", "bank_id", "category_id", "name"
+        )
 
         # Calculating total amount paid (including down payment)
         total_emi_paid = sum(exp["amount"] for exp in expenses)
@@ -170,14 +174,26 @@ class EmiExpenseView(BaseTokenView):
             "tenure_months": loan.tenure_months,
             "annual_interest_rate": loan.annual_interest_rate,
             "down_payment": loan.down_payment,
-            "emi_amount":loan.emi_amount,
-            "total_interest":loan.total_interest,
-            "total_payment":loan.total_payment,
-            "startdate":loan.startdate,
-            "enddate":loan.enddate,
+            "emi_amount": loan.emi_amount,
+            "total_interest": loan.total_interest,
+            "total_payment": loan.total_payment,
+            "startdate": loan.startdate,
+            "enddate": loan.enddate,
             "total_emi_paid": total_emi_paid,  # Only EMI payments
             "total_amount_paid": total_amount_paid,  # EMI + Down Payment
-            "emidata": [{"date": exp["expense_date"], "amount": exp["amount"]} for exp in expenses]
+            "emidata": [
+                {
+                    "date": exp["expense_date"],
+                    "amount": exp["amount"],
+                    "transaction_id": exp["transaction_id"],
+                    "description": exp["description"],
+                    "added_by": exp["added_by"],
+                    "bank": exp["bank_id"],
+                    "category": exp["category_id"],
+                    "name": exp["name"]
+                }
+                for exp in expenses
+            ]
         }
 
         return Response(emi_data, status=status.HTTP_200_OK)
@@ -186,18 +202,19 @@ class EmiExpenseView(BaseTokenView):
         """Fetch all EMI loans along with their expenses."""
         loans = Loan.objects.filter(user=user)
 
+        # Fetch the correct EMI-related `Choices` instance
+        emi_choice = Choices.objects.get(name__iexact="emi")
+
         response_data = []
         for loan in loans:
             # Fetching all EMI expenses related to this loan
-            expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("expense_date", "amount")
-            
-           
-            
-          
-            current_date += timedelta(days=32)
-            current_date = current_date.replace(day=1)
+            expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=emi_choice).values(
+                "expense_date", "amount", "transaction_id", "description", "added_by", "bank_id", "category_id", "name"
+            )
+
             total_emi_paid = sum(exp["amount"] for exp in expenses)
             total_amount_paid = loan.down_payment + total_emi_paid 
+
             # Structuring the response
             loan_data = {
                 "id": loan.id,
@@ -206,18 +223,31 @@ class EmiExpenseView(BaseTokenView):
                 "tenure_months": loan.tenure_months,
                 "annual_interest_rate": loan.annual_interest_rate,
                 "down_payment": loan.down_payment,
-                "emi_amount":loan.emi_amount,
-                 "total_interest":loan.total_interest,
-                 "total_payment":loan.total_payment,
-                 "startdate":loan.startdate,
-                 "enddate":loan.enddate,
+                "emi_amount": loan.emi_amount,
+                "total_interest": loan.total_interest,
+                "total_payment": loan.total_payment,
+                "startdate": loan.startdate,
+                "enddate": loan.enddate,
                 "total_emi_paid": total_emi_paid,  # Only EMI payments
                 "total_amount_paid": total_amount_paid,  # EMI + Down Payment
-                "emidata": [{"date": exp["expense_date"], "amount": exp["amount"]} for exp in expenses]
+                "emidata": [
+                    {
+                        "date": exp["expense_date"],
+                        "amount": exp["amount"],
+                        "transaction_id": exp["transaction_id"],
+                        "description": exp["description"],
+                        "added_by": exp["added_by"],
+                        "bank": exp["bank_id"],
+                        "category": exp["category_id"],
+                        "name": exp["name"]
+                    }
+                    for exp in expenses
+                ]
             }
             response_data.append(loan_data)
 
         return Response(response_data, status=status.HTTP_200_OK)
+
     
 
 class AssetsAPIView(BaseTokenView):
@@ -243,9 +273,17 @@ class LiabilitiesAPIView(BaseTokenView):
             loans = Loan.objects.all()
             
             liabilities_data = []
+            emi_choice = Choices.objects.filter(name__iexact="emi").first()
+
             for loan in loans:
-                # Fetching EMI-related expenses for this loan
-                expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment="emi").values("amount")
+                if emi_choice:
+                    expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=emi_choice).values("amount")
+                else:
+                    expenses=ExpenseModel.objects.filter(loan=loan,purpose_of_payment=None).values("amount")
+                    
+
+               
+                
                 total_emi_paid = sum(exp["amount"] for exp in expenses)
                 
                 # Ensuring total_payment and total_amount_paid are not None before subtraction

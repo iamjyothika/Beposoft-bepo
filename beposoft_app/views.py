@@ -1460,24 +1460,27 @@ class CustomerOrderItems(BaseTokenView):
             if error_response:
                 return error_response
             
-            order = Order.objects.filter(pk=order_id).first()
-            orderItems = OrderItem.objects.filter(order=order_id)
-            if not orderItems.exists():
-                return Response({"status": "error", "message": "No orders Items found"}, status=status.HTTP_404_NOT_FOUND)
-            manage_staff_designation = order.manage_staff.designation
-            print('User designstion',manage_staff_designation)
-            orderSerilizer = OrderModelSerilizer(order, many=False)
+            # Use select_related to fetch related objects in a single query
+            order = Order.objects.select_related('manage_staff').filter(pk=order_id).first()
+            if not order:
+                return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
             
+            # Use prefetch_related to fetch related order items in a single query
+            orderItems = OrderItem.objects.filter(order=order_id).select_related('product')
+            if not orderItems.exists():
+                return Response({"status": "error", "message": "No order items found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            manage_staff_designation = order.manage_staff.designation
+            orderSerilizer = OrderModelSerilizer(order, many=False)
             serializer = OrderItemModelSerializer(orderItems, many=True, context={'manage_staff_designation': manage_staff_designation})
 
-            return Response({"order":orderSerilizer.data,"items":serializer.data}, status=status.HTTP_200_OK)
+            return Response({"order": orderSerilizer.data, "items": serializer.data}, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
@@ -2146,7 +2149,7 @@ class PerformaOrderStaff(BaseTokenView):
 class CreateCompnayDetailsView(BaseTokenView):
     def post(self, request):
         try:
-            # Authenticate the user
+            # Authenticate user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
@@ -2283,7 +2286,7 @@ class DailyGoodsView(BaseTokenView):
         
             for box_detail in warehouse:
                
-                if box_detail.shipped_date not in seen_dates:
+                if (box_detail.shipped_date not in seen_dates) and (box_detail.shipped_date is not None):
                     boxes_for_date = warehouse.filter(shipped_date=box_detail.shipped_date)
                     total_weight = 0
                     for box in boxes_for_date:
@@ -2519,20 +2522,37 @@ class WarehouseUpdateCheckedByView(BaseTokenView):
 
 
 
+
 class ExpensAddView(BaseTokenView):
     def post(self, request):
         try:
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            expense=ExpenseSerializer(data=request.data)
-            print(expense)
+
+            print("Incoming Request Data:", request.data)  # Debug Request Data
+
+            expense = ExpenseSerializer(data=request.data)
+
             if expense.is_valid():
-                expense.save()
-                return Response({"status": "success", "message": "Expense Added Successfully","data":expense.data},status=status.HTTP_200_OK)
-            return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
+                print("Validated Expense Data:", expense.validated_data)  # Debug Validated Data
+
+                expense_obj = expense.save()
+                print("Saved Expense Object:", expense_obj)  # Debug Saved Object
+
+                return Response({
+                    "status": "success",
+                    "message": "Expense Added Successfully",
+                    "data": expense.data
+                }, status=status.HTTP_200_OK)
+
+            print("Expense Errors:", expense.errors)  # Debug Errors
+            return Response(expense.errors, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
+            print("Exception Occurred:", str(e))  # Debug Exception
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
     def get(self, request):
         try:
@@ -2552,7 +2572,7 @@ class ExpensAddViewExpectEmi(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-            expense=ExpenseSerializerExpectEmi(data=request.data)
+            expense=ExpenseExpectEmiSerializer(data=request.data)
             print(expense)
             if expense.is_valid():
                 expense.save()

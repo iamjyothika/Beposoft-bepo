@@ -79,11 +79,19 @@ class ExpenseModel(models.Model):
     asset_types = models.CharField(max_length=100, choices=ASSET_CHOICES, null=True)
 
     def save(self, *args, **kwargs):
-        """Ensure EMI payments are linked to a loan."""
-        if self.purpose_of_payment and self.purpose_of_payment.name.lower() == 'emi' and not self.loan:
-            raise ValueError("EMI payments must be associated with a loan.")
+        """Ensure EMI payments are linked to a loan before saving."""
+        if self.purpose_of_payment:
+            purpose = Choices.objects.filter(id=self.purpose_of_payment.id).first()
+            if purpose:
+                print(f"Saving Expense: Purpose={purpose.name}, Loan ID={self.loan}")  # Debugging output
+                if purpose.name.lower() == 'emi' and not self.loan:
+                    raise ValidationError("EMI payments must be associated with a loan.")
+
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Expense: {self.amount} for {self.purpose_of_payment} on {self.expense_date}"
     
+
+
+
