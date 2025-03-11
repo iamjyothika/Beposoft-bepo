@@ -911,17 +911,20 @@ class WareHouseSerializer(serializers.ModelSerializer):
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
-  
-
     class Meta:
         model = ExpenseModel
         fields = "__all__"
-        
 
+    def validate(self, data):
+        """Ensure EMI payments are linked to a loan."""
+        purpose = data.get("purpose_of_payment")
+        loan = data.get("loan")
 
-    
-   
-class ExpenseSerializerExpectEmi(serializers.ModelSerializer):
+        if purpose and hasattr(purpose, 'name') and purpose.name.lower() == 'emi' and not loan:
+            raise serializers.ValidationError({"loan": "EMI payments must be associated with a loan."})
+
+        return data
+class ExpenseExpectEmiSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ExpenseModel
@@ -1059,12 +1062,21 @@ class UpdateCartPricesSerializer(serializers.ModelSerializer):
             instance.product.save()
 
         return instance
+
+class ChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Choices
+        fields = ['id', 'name'] 
+
+
     
 
 class CompanyExpenseSeriizers(serializers.ModelSerializer):
+    purpose_of_payment = ChoiceSerializer()  # Nested serializer
+
     class Meta :
         model = ExpenseModel
-        fields = ['id','amount','expense_date']
+        fields = ['id','amount','expense_date','purpose_of_payment']
 
 
     
