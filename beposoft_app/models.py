@@ -404,36 +404,39 @@ class Bank(models.Model):
 
 class Order(models.Model):
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
-    warehouses=models.ForeignKey(WareHouse,on_delete=models.CASCADE,null=True)
-   
+    warehouses = models.ForeignKey(WareHouse, on_delete=models.CASCADE, null=True)
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="companies", null=True)
-    customer = models.ForeignKey(Customers, on_delete=models.CASCADE,related_name="customer")
+    customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name="customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
-    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE,related_name="billing_address")
+    billing_address = models.ForeignKey(Shipping, on_delete=models.CASCADE, related_name="billing_address")
     order_date = models.CharField(max_length=100)
     family = models.ForeignKey(Family, on_delete=models.CASCADE)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
-    code_charge = models.IntegerField(default=0,null=True)
-    shipping_mode = models.CharField(max_length=100,null=True)
-    shipping_charge = models.IntegerField(default=0,null=True)
+    code_charge = models.IntegerField(default=0, null=True)
+    shipping_mode = models.CharField(max_length=100, null=True)
+    shipping_charge = models.IntegerField(default=0, null=True)
+    
+    cod_amount = models.FloatField(default=0.0, null=True, blank=True)  # New field for COD amount
+
     payment_status = models.CharField(max_length=20, choices=[
         ('paid', 'paid'),
         ('COD', 'COD'),
         ('credit', 'credit'),
         ('PENDING', 'PENDING'),
-        ('VOIDED','VOIDED')
+        ('VOIDED', 'VOIDED')
     ], default='paid')
+
     status = models.CharField(max_length=100, choices=[
         ('Pending', 'Pending'),
         ('Approved', 'Approved'),
         ('Shipped', 'Shipped'),
-        ('Invoice Created','Invoice Created'),
-        ('Invoice Approved','Invoice Approved'),
-        ('Waiting For Confirmation','Waiting For Confirmation'),
-        ('To Print','To Print'),
-        ('Invoice Rejectd','Invoice Rejectd'),
-        ('Order Request by Warehouse','Order Request by Warehouse'),
+        ('Invoice Created', 'Invoice Created'),
+        ('Invoice Approved', 'Invoice Approved'),
+        ('Waiting For Confirmation', 'Waiting For Confirmation'),
+        ('To Print', 'To Print'),
+        ('Invoice Rejected', 'Invoice Rejected'),
+        ('Order Request by Warehouse', 'Order Request by Warehouse'),
         ('Processing', 'Processing'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
@@ -441,9 +444,11 @@ class Order(models.Model):
         ('Rejected', 'Rejected'),
         ('Return', 'Return'),
     ], default='pending')
+
     total_amount = models.FloatField()
-    bank = models.ForeignKey(Bank, on_delete=models.CASCADE,related_name="bank")
+    bank = models.ForeignKey(Bank, on_delete=models.CASCADE, related_name="bank")
     note = models.TextField(null=True)
+
     payment_method = models.CharField(max_length=50, choices=[
         ('Credit Card', 'Credit Card'),
         ('Debit Card', 'Debit Card'),
@@ -453,24 +458,25 @@ class Order(models.Model):
         ('Bank Transfer', 'Bank Transfer'),
         ('Cash on Delivery (COD)', 'Cash on Delivery (COD)'),
     ], default='Net Banking')
-    updated_at = models.DateTimeField(auto_now=True) 
+
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.invoice:
             self.invoice = self.generate_invoice_number()
             print(f"Generated invoice number: {self.invoice}")
-            
+
         if self.pk:  # Check if the object already exists
             original = Order.objects.get(pk=self.pk)
             if original.status != self.status:
-                self.updated_at = now()  
-                
+                self.updated_at = now()
+
         super().save(*args, **kwargs)
 
     def generate_invoice_number(self):
         if not self.company:
             raise ValueError("Company must be set to generate an invoice number.")
-        
+
         prefix = self.company.prefix  # Retrieve prefix from the associated Company
         number = self.get_next_invoice_number(prefix)
         invoice_number = f"{prefix}{number}"
@@ -478,22 +484,21 @@ class Order(models.Model):
 
     def get_next_invoice_number(self, prefix):
         highest_invoice = Order.objects.filter(invoice__startswith=prefix).order_by('invoice').last()
-        
+
         if highest_invoice:
-            # Extract the numeric part of the invoice, assuming it's in the form FPN000001
-            
             last_number = highest_invoice.invoice[len(prefix):]  # Remove the prefix
             try:
-                number = int(last_number) + 1 
+                number = int(last_number) + 1
             except ValueError:
-                number = 1  
+                number = 1
         else:
             number = 1  # If no previous invoice exists, start with 1
-        
+
         return str(number).zfill(6)  # Zero-pad to 6 digits (FPN000001, FPN000002, etc.)
 
     def __str__(self):
         return f"Order {self.invoice} by {self.customer}"
+
    
     
 
