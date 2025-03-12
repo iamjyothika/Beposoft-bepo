@@ -1853,6 +1853,8 @@ class BankView(BaseTokenView):
         except Exception as  e :
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+  
         
 class BankAccountView(BaseTokenView):
     def get(self,request):
