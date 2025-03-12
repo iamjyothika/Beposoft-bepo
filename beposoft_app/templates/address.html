@@ -52,6 +52,7 @@
         }
         .signature {
             text-align: right;
+            
         }
     </style>
 </head>
@@ -88,7 +89,7 @@
                     <li>{{ product.name }} - {{ product.unit }} - {{ product.stock }} in stock</li>
                 {% endfor %}
             </ul>
-            <p><strong>Date:</strong> {{ warehouse_data.shipped_date }}</p>
+            <p><strong>Date:</strong> </p>
         </div>
         <div class="signature">
             <p class="fw-bold">SIGNATURE</p>
@@ -102,8 +103,8 @@
             Explosives, flammable & inflammable chemicals, gases, compressed liquids, etc. Do not contain any prohibited items.
         </p>
         <div class="mt-3">
-            <p><strong>AW = .54 Kg.</strong></p>
-            <p><strong>VW = ({{ warehouse_data.length }} X {{ warehouse_data.breadth }} X {{ warehouse_data.height }} / 6000)</strong></p>
+            <p><strong>AW = {{ warehouse.actual_weight }}kg.</strong></p>
+            <p><strong>VW = {{ volume_weight }}</strong></p>
         </div>
     </div>
     <div class="container mt-4 text-center">

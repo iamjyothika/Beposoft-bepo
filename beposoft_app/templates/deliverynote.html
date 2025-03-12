@@ -52,23 +52,20 @@
         @media (max-width: 767px) {
             .invoice-container {
                 padding: 10px;
-                width: 100%;
+                font-size: 11px;
             }
             .invoice-header h2 {
-                font-size: 18px;
+                font-size: 16px;
             }
             .invoice-header p {
-                font-size: 12px;
+                font-size: 11px;
             }
             .table th, .table td {
-                font-size: 12px;
-                padding: 8px;
+                font-size: 10px;
+                padding: 6px;
             }
-            .row {
-                margin-bottom: 10px;
-            }
-            .text-end {
-                text-align: left !important;
+            .signature {
+                max-width: 70px;
             }
         }
     </style>
@@ -151,22 +148,33 @@
     </div>
     
     <div class="no-print">
-        <button class="btn btn-primary" id="downloadBtn" onclick="downloadDeliveryNote()">Download Delivery Note</button>
+        <button class="btn btn-primary" id="downloadBtn" onclick="downloadDeliveryNote()">Download</button>
     </div>
     
     <script>
         function downloadDeliveryNote() {
-            document.getElementById("downloadBtn").style.display = "none";
-            html2canvas(document.querySelector("#invoice"), { scale: 3, useCORS: true }).then(canvas => {
+            const button = document.getElementById("downloadBtn");
+            button.style.display = "none"; // Hide button during PDF creation
+
+            html2canvas(document.querySelector("#invoice"), {
+                scale: window.innerWidth < 768 ? 2 : 3, // Adjust scale for mobile
+                useCORS: true
+            }).then(canvas => {
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF("p", "mm", "a4");
+
                 const imgData = canvas.toDataURL("image/png");
-                const imgWidth = 210;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let imgWidth = 210; // A4 width in mm
+                let imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                // Adjust font size for mobile
+                let fontSize = window.innerWidth < 768 ? 10 : 12; 
+                pdf.setFontSize(fontSize);
 
                 if (imgHeight > 297) {
                     let heightLeft = imgHeight;
-                    let yPosition = 0;
+                    let yPosition = 10;
+
                     pdf.addImage(imgData, "PNG", 10, yPosition, imgWidth - 20, 297);
                     heightLeft -= 297;
                     yPosition -= 297;
@@ -180,13 +188,14 @@
                 } else {
                     pdf.addImage(imgData, "PNG", 10, 10, imgWidth - 20, imgHeight);
                 }
-                
+
                 pdf.save("Delivery_Note.pdf");
-                document.getElementById("downloadBtn").style.display = "block";
+                button.style.display = "block"; // Show button again after download
             });
         }
     </script>
 </body>
 </html>
+
 
 
