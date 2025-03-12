@@ -10,6 +10,7 @@ class Category(models.Model):
 
 class Choices(models.Model):
     name = models.CharField(max_length=100, null=True)
+    
 class Loan(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     principal = models.DecimalField(max_digits=15, decimal_places=2, help_text="Total loan amount")

@@ -560,7 +560,7 @@ class WarehouseUpdateSerializers(serializers.ModelSerializer):
 # class OrderModelSerilizer(serializers.ModelSerializer):
 #     manage_staff = serializers.CharField(source="manage_staff.name")
 #     staffID = serializers.CharField(source="manage_staff.pk")
-#     family = serializers.CharField(source="family.name")
+#     pmily = serializers.CharField(source="family.name")
 #     bank  = BankSerializer(read_only=True)
 #     billing_address = ShippingAddressView(read_only=True)
 #     customer = CustomerSerilizers(read_only=True)
@@ -949,7 +949,8 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
     company = CompanyDetailsSerializer(read_only=True)
     payed_by = UserUpdateSerilizers(read_only=True)
     bank = Bankserializers(read_only=True)
-    categoryname = serializers.SerializerMethodField()  
+    categoryname = serializers.SerializerMethodField() 
+    purpose_of_payment=serializers.CharField(source="purpose_of_payment.name") 
     class Meta:
         model = ExpenseModel
         fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types']
