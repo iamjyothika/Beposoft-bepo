@@ -414,7 +414,7 @@ class ShippingAddressView(serializers.ModelSerializer):
     # state = serializers.CharField(source='state.name', read_only=True)
     class Meta:
         model = Shipping
-        fields = ["id","address"]
+        fields = ["id","address","zipcode","email","city","phone"]
 
 
 
@@ -949,11 +949,13 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
     company = CompanyDetailsSerializer(read_only=True)
     payed_by = UserUpdateSerilizers(read_only=True)
     bank = Bankserializers(read_only=True)
-    categoryname = serializers.SerializerMethodField() 
+    categoryname = serializers.SerializerMethodField()
+    
     purpose_of_payment=serializers.CharField(source="purpose_of_payment.name") 
+    loanname = serializers.SerializerMethodField()
     class Meta:
         model = ExpenseModel
-        fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types']
+        fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types',"loanname"]
     
     
     def get_categoryname(self, obj):
@@ -962,6 +964,10 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
         Returns None if category is not set.
         """
         return obj.category.category_name if obj.category else None
+
+    def get_loanname(self, obj):
+        # Check if loanname is not None before accessing emi_name
+        return obj.loan.emi_name if obj.loan else None
     
         
         
