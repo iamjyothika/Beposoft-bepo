@@ -1580,6 +1580,7 @@ class ProductAttributeListView(BaseTokenView):
 
 
 
+
 class ProductAttributeView(BaseTokenView):
 
     def get_user_and_attribute(self, request, pk):
@@ -1852,6 +1853,8 @@ class BankView(BaseTokenView):
         except Exception as  e :
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+  
         
 class BankAccountView(BaseTokenView):
     def get(self,request):
@@ -2371,6 +2374,8 @@ class DailyGoodsBydate(BaseTokenView):
             return Response(serializer.data,status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            
 class WarehouseListView(BaseTokenView):
     def get(self, request):
         try:
@@ -2535,6 +2540,7 @@ class ExpensAddView(BaseTokenView):
             print("Incoming Request Data:", request.data)  # Debug Request Data
 
             expense = ExpenseSerializer(data=request.data)
+            print(expense)
 
             if expense.is_valid():
                 print("Validated Expense Data:", expense.validated_data)  # Debug Validated Data
@@ -3901,16 +3907,28 @@ def generate_shipping_label(request, order_id):
     for item in order_items:
         item.product = get_object_or_404(Products, id=item.product_id)
 
+    # Calculate Volume Weight (VW) if warehouse data exists
+    volume_weight = None
+    if warehouse and warehouse.length and warehouse.breadth and warehouse.height:
+        try:
+            length = float(warehouse.length)  # Convert to float
+            breadth = float(warehouse.breadth)  # Convert to float
+            height = float(warehouse.height)  # Convert to float
+            volume_weight = (length * breadth * height) / 6000
+        except ValueError:
+            volume_weight = "Invalid Data"  # Handle cases where conversion fails
+
     context = {
         "order": order,
         "order_items": order_items,
         "shipping_data": shipping_data,
         "warehouse": warehouse,
+        "volume_weight": round(volume_weight, 2) if isinstance(volume_weight, (int, float)) else volume_weight,
         "speed": "0000053866",  # Can be dynamically generated if needed
-    
     }
     
     return render(request, "address.html", context)
+
 
 
 class ManagerUnderCustomer(BaseTokenView):
