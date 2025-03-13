@@ -292,11 +292,14 @@ class ProductSerializerView(serializers.ModelSerializer):
     # Fetch the main product with the same groupID
         main_product = Products.objects.filter(groupID=instance.groupID).order_by('id').first()
 
+
         if instance.type == 'variant' and main_product:
-            if data.get('landing_cost') is None:
-               data['landing_cost'] = main_product.landing_cost
-            if data.get('retail_price') is None:
-               data['retail_price'] = main_product.retail_price
+            if not data.get('landing_cost'):
+                data['landing_cost'] = main_product.landing_cost
+            if not data.get('retail_price'):
+                data['retail_price'] = main_product.retail_price
+            if not data.get('hsn_code'):
+                data['hsn_code'] = main_product.hsn_code 
 
         return data      
 
@@ -313,7 +316,9 @@ class ProductSerializerView(serializers.ModelSerializer):
         """
         Fetch variant details for the same groupID, including images.
         """
-        if obj.type == 'variant':  # Ensure correct check for 'variant'
+        main_product = Products.objects.filter(groupID=obj.groupID).order_by('id').first()
+
+        if main_product:  # Ensure correct check for 'variant'
             variants = Products.objects.filter(groupID=obj.groupID)
             variant_list = []
             for variant in variants:
@@ -328,6 +333,15 @@ class ProductSerializerView(serializers.ModelSerializer):
                     # Use the first available image from SingleProducts if product.image is missing
                     selected_image = image_urls[0] if image_urls else None 
 
+                hsn_code = variant.hsn_code if variant.hsn_code and variant.hsn_code.strip() else main_product.hsn_code
+                
+            
+
+            # ✅ Always inherit Warehouse Name from main product if missing
+                warehouse_name = variant.warehouse.name if variant.warehouse else (
+                    main_product.warehouse.name if main_product.warehouse else None
+                )
+                
 
           
                 # Fetch images for each variant
@@ -336,13 +350,14 @@ class ProductSerializerView(serializers.ModelSerializer):
                     "id": variant.pk,
                     "groupID": variant.groupID,
                     "name": variant.name,
+                    "hsn_code":hsn_code,
                     "image":selected_image,  # Use the first image or None
                     "price": variant.selling_price,
                     "color": variant.color if variant.color else None,
                     "size": variant.size if variant.size else None,
                     "stock": variant.stock,
                     "created_user": variant.created_user.name,
-                    "warehouse_name": variant.warehouse.name if variant.warehouse else None,
+                    "warehouse_name": warehouse_name
                     
                    
                 })
