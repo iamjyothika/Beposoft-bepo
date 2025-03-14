@@ -212,6 +212,7 @@ class CreateUserView(BaseTokenView):
             
             # Save user data
             serializer = UserSerializer(data=request.data)
+            print(serializer)
             if serializer.is_valid():
                 user_instance = serializer.save()
 

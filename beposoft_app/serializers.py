@@ -300,6 +300,9 @@ class ProductSerializerView(serializers.ModelSerializer):
                 data['retail_price'] = main_product.retail_price
             if not data.get('hsn_code'):
                 data['hsn_code'] = main_product.hsn_code 
+        data['warehouse_name'] = instance.warehouse.name if instance.warehouse else (
+        main_product.warehouse.name if main_product and main_product.warehouse else None
+    )          
 
         return data      
 
