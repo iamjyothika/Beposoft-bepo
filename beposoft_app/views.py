@@ -2273,7 +2273,7 @@ class WarehouseDetailView(BaseTokenView):
                 return error_response
             warehousedata = get_object_or_404(Warehousedata, pk=pk)
             warehousedata.delete()
-            return Response({"status": "success", "message": "Warehouse data deleted"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"status": "success", "message": "Warehouse data deleted"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                             
