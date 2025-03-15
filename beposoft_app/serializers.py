@@ -493,6 +493,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     name=serializers.CharField(source="product.name")
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
+    price_discount = serializers.SerializerMethodField()
   
     class Meta:
         model = OrderItem
@@ -510,6 +511,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
             "quantity",
             "actual_price",
             "exclude_price",
+            "price_discount",
             "image"
         ]
     def get_name(self, obj):
@@ -519,13 +521,29 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
         elif obj.variant:
             return obj.variant.name
         return None
+    def get_price_discount(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        price_discount = max(selling_price - discount, 0)
+
+        return round(price_discount, 2)
+    
+   
+        
+    def get_exclude_price(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        tax = obj.product.tax or 0
+
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax / 100))
+
+        return round(exclude_price, 2)
     
     def get_actual_price(self, obj):
-        # Calculate the actual price based on the product type
-        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
-    
-    def get_exclude_price(self, obj):
-        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
+        # directly use exclude_price
+        return self.get_exclude_price(obj)
+
     
 
     
@@ -633,14 +651,14 @@ class BepocartSerializers(serializers.ModelSerializer):
         
 class BepocartSerializersView(serializers.ModelSerializer):
     name = serializers.CharField(source="product.name")
-    tax = serializers.CharField(source="product.tax")
-
-    exclude_price = serializers.CharField(source="product.exclude_price")
+    tax = serializers.FloatField(source="product.tax")
     image = serializers.ImageField(source="product.image")
-
+    selling_price = serializers.FloatField(source="product.selling_price")
+    retail_price = serializers.FloatField(source="product.retail_price")
+    exclude_price = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
-    selling_price = serializers.CharField(source="product.selling_price")
-    retail_price = serializers.CharField(source="product.retail_price")
+
+  
     class Meta:
         model = BeposoftCart
         fields = [
@@ -652,7 +670,17 @@ class BepocartSerializersView(serializers.ModelSerializer):
         user = obj.user
         if user.designation in ['BDO', 'BDM']:
             return obj.product.selling_price  # If designation is BDO or BDM, return the selling price
-        return obj.product.retail_price 
+        return obj.product.retail_price
+    
+    def get_exclude_price(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        tax = obj.product.tax or 0
+
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax / 100))
+
+        return round(exclude_price, 2) 
     
 
 
@@ -779,6 +807,19 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
         # Calculate the total paid amount from all related payment receipts for this order
         total_paid = obj.recived_payment.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
         return total_paid
+    
+class PaymentReceiptSerializerView(serializers.ModelSerializer):
+    bank=serializers.CharField(source="bank.name")
+    invoice=serializers.CharField(source="order.invoice")
+    customer=serializers.CharField(source="customer.name")
+    created_by=serializers.CharField(source="created_by.name")
+    class Meta:
+        model = PaymentReceipt
+        fields = ["id","payment_receipt","amount","transactionID","received_at","remark","order","customer","bank","invoice","created_by"]
+
+
+
+        
     
 class WarehouseDetailSerializer(serializers.ModelSerializer):
     class Meta:

@@ -4408,6 +4408,36 @@ class CustomerUploadView(BaseTokenView):
 
 
 
+class AllpaymentReceiptsView(BaseTokenView):
+    def get(self, request):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            payments=PaymentReceipt.objects.all()
+            serializer = PaymentReceiptSerializerView(payments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class ReceiptViewbyId(BaseTokenView):
+    def put(self, request, id):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            pay=PaymentReceipt.objects.get(id=id)
+            serializer = PaymentRecieptSerializers(pay,data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(e)
+            return Response({"status": "error", "message": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
 
 
 

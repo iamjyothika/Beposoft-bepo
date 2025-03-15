@@ -313,11 +313,7 @@ class Products(models.Model):
     
       
 
-    def calculate_exclude_price(self):
-        if self.selling_price is not None:
-            self.exclude_price = self.selling_price / (1 + self.tax / 100)
-        else:
-            self.exclude_price = 0
+   
 
    
 
@@ -517,6 +513,8 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.product.name} (x{self.quantity})"
 
+
+
     
         
         
@@ -531,8 +529,15 @@ class BeposoftCart(models.Model):
     
     def __str__(self):
         return f"{self.product.name} - {self.quantity}"
+    
+    
+    
+      
+    
+    
     class Meta:
         db_table = "beposoft_cart"
+
         
         
     
