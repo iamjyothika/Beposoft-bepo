@@ -3886,6 +3886,7 @@ def Deliverynote(request, order_id):
         "warehouse_items": warehouse_items,
         "company": company,
         "warehouse": warehouse,
+        
     }
     
     return render(request, "deliverynote.html", context)
@@ -3894,10 +3895,10 @@ def Deliverynote(request, order_id):
 
 def generate_shipping_label(request, order_id):
     # Fetch the order
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(Order.objects.select_related('customer'), id=order_id)
 
-    # Fetch order items
-    order_items = OrderItem.objects.filter(order=order)
+    # Fetch order items and related products efficiently
+    order_items = OrderItem.objects.filter(order=order).select_related('product')
 
     # Fetch the shipping details for the order's customer
     shipping_data = get_object_or_404(Shipping, customer=order.customer)
@@ -3905,20 +3906,16 @@ def generate_shipping_label(request, order_id):
     # Fetch warehouse data for the order (assuming one warehouse per order)
     warehouse = Warehousedata.objects.filter(order=order).first()
 
-    # Fetch product details for each order item
-    for item in order_items:
-        item.product = get_object_or_404(Products, id=item.product_id)
-
     # Calculate Volume Weight (VW) if warehouse data exists
     volume_weight = None
-    if warehouse and warehouse.length and warehouse.breadth and warehouse.height:
+    if warehouse and all([warehouse.length, warehouse.breadth, warehouse.height]):
         try:
-            length = float(warehouse.length)  # Convert to float
-            breadth = float(warehouse.breadth)  # Convert to float
-            height = float(warehouse.height)  # Convert to float
+            length = float(warehouse.length)
+            breadth = float(warehouse.breadth)
+            height = float(warehouse.height)
             volume_weight = (length * breadth * height) / 6000
         except ValueError:
-            volume_weight = "Invalid Data"  # Handle cases where conversion fails
+            volume_weight = "Invalid Data"
 
     context = {
         "order": order,
@@ -3927,9 +3924,11 @@ def generate_shipping_label(request, order_id):
         "warehouse": warehouse,
         "volume_weight": round(volume_weight, 2) if isinstance(volume_weight, (int, float)) else volume_weight,
         "speed": "0000053866",  # Can be dynamically generated if needed
+        
     }
     
     return render(request, "address.html", context)
+
 
 
 
