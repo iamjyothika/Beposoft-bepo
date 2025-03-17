@@ -32,8 +32,6 @@ from rest_framework.pagination import PageNumberPagination
 from bepocart.models import *
 from django.core.files.base import ContentFile
 
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -4448,8 +4446,7 @@ class ReceiptViewbyId(BaseTokenView):
             print(e)
             return Response({"status": "error", "message": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-import requests
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -4492,9 +4489,6 @@ def send_shipping_id(name, phone_number, order_id, tracking_id):
         logger.error(f"RequestException: {e}", exc_info=True)
         return False
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
 class SendShippingIDView(APIView):
     def post(self, request):
