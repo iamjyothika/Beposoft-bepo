@@ -33,6 +33,7 @@ from bepocart.models import *
 from django.core.files.base import ContentFile
 
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -1855,8 +1856,8 @@ class BankView(BaseTokenView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-  
-        
+
+
 class BankAccountView(BaseTokenView):
     def get(self,request):
         try :

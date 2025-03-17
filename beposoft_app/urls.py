@@ -181,6 +181,9 @@ urlpatterns = [
     path('api/attendance/absence/<int:staff_id>/', StaffAttendanceAbsenceAPIView.as_view(), name='attendance_absence'),
 
 
+    
+    path('api/sendtrackingid/', SendShippingIDView.as_view(), name='send-shipping-id'),
+    
 
 ]
 
