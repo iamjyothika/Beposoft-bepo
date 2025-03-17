@@ -410,7 +410,7 @@ class Order(models.Model):
     family = models.ForeignKey(Family, on_delete=models.CASCADE)
     state = models.ForeignKey(State, on_delete=models.CASCADE)
     code_charge = models.IntegerField(default=0, null=True)
-    shipping_mode = models.CharField(max_length=100, null=True)
+    shipping_mode = models.CharField(max_length=100, null=True,blank=True)
     shipping_charge = models.IntegerField(default=0, null=True)
     
     cod_amount = models.FloatField(default=0.0, null=True, blank=True)  # New field for COD amount
@@ -651,6 +651,10 @@ class PerfomaInvoiceOrderItem(models.Model):
 
 
 class Warehousedata(models.Model):
+    MESSAGE_CHOICES=[
+        ('pending','pending'),
+        ('sent','sent')
+    ]
     order=models.ForeignKey(Order,on_delete=models.CASCADE,related_name='warehouse')
     box=models.CharField(max_length=100)
     weight=models.CharField(max_length=30)
@@ -670,6 +674,7 @@ class Warehousedata(models.Model):
     status=models.CharField(max_length=30,null=True, blank=True)
     shipped_date=models.DateField(null=True, blank=True)
     postoffice_date=models.DateField(null=True,blank=True)
+    message_status=models.CharField(max_length=30,choices=MESSAGE_CHOICES,default="pending")
     def __str__(self):
         parcel_service_name = self.parcel_service.name if self.parcel_service else "No Parcel Service"
         shipped_date_str = self.shipped_date.strftime("%Y-%m-%d") if self.shipped_date else "No Shipped Date"

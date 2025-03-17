@@ -573,7 +573,7 @@ class  WarehousedataSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'box', 'weight', 'length', 'breadth', 'height', 'image',
             'parcel_service', 'tracking_id', 'shipping_charge', 'status',
-            'shipped_date', 'order', 'packed_by','verified_by','checked_by', 'customer','phone','zip_code', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date'
+            'shipped_date', 'order', 'packed_by','verified_by','checked_by', 'customer','phone','zip_code', 'invoice', 'family','actual_weight','parcel_amount','postoffice_date','message_status'
         ]
 
     def to_representation(self, instance):

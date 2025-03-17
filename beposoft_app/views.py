@@ -4423,6 +4423,17 @@ class AllpaymentReceiptsView(BaseTokenView):
         
 
 class ReceiptViewbyId(BaseTokenView):
+    def get(self, request, id):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            pays=PaymentReceipt.objects.get(id=id)
+            serializer_data = PaymentReceiptSerializerView(pays)
+            return Response(serializer_data.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"status": "error", "message": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
     def put(self, request, id):
         try:
             authUser, error_response = self.get_user_from_token(request)
