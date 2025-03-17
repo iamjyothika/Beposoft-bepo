@@ -176,6 +176,8 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = '/media/'    
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  
 
+SMS_ALERT_API_KEY ="5dd7cd37e7239"  # Replace with your actual API Key
+SMS_ALERT_SENDER_ID = 1707162624534280862
 
 
 # AWS S3 Configuration

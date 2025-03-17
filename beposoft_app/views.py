@@ -33,6 +33,7 @@ from bepocart.models import *
 from django.core.files.base import ContentFile
 
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -1854,8 +1855,8 @@ class BankView(BaseTokenView):
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-  
-        
+
+
 class BankAccountView(BaseTokenView):
     def get(self,request):
         try :
@@ -4406,29 +4407,75 @@ class CustomerUploadView(BaseTokenView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+import requests
+import logging
 
+logger = logging.getLogger(__name__)
 
+def send_shipping_id(name, phone_number, order_id, tracking_id):
+    sms_alert_username = 'francisgoskates@gmail.com'  # Replace with actual SMSAlert username
+    sms_alert_password = 'xdr5IBU@'  # Replace with actual SMSAlert password
+    sms_alert_sender_id = 'BEPOST'  # Ensure this matches your approved Sender ID
+    template_id = '1707164275994735387'  # ✅ Updated with your correct Template ID
 
+    # ✅ Message must exactly match the approved template format
+    message = (f"Hello {name}, Your Order #{order_id} Was shipped from Bepositive via Indian Post "
+               f"Your Tracking Number is: {tracking_id} Track Order Status: Shipped "
+               f"for any query call 9526792642")
 
+    url = 'https://www.smsalert.co.in/api/push.json'
 
+    payload = {
+        'user': sms_alert_username,
+        'pwd': sms_alert_password,
+        'sender': sms_alert_sender_id,
+        'mobileno': phone_number,
+        'text': message,  # ✅ Must match the template format
+        'template_id': template_id,  # ✅ Must be correct
+    }
 
+    logger.info(f"Sending SMS with payload: {payload}")  # Debugging
 
+    try:
+        response = requests.post(url, data=payload)
+        logger.info(f"SMSAlert API Response: {response.status_code} - {response.text}")  # Log full response
 
+        if response.status_code != 200:
+            logger.error(f"SMSAlert API Error: {response.text}")  # Log actual error message
+            return False
 
+        response_data = response.json()
+        return response_data.get('status') == 'success'
 
+    except requests.exceptions.RequestException as e:
+        logger.error(f"RequestException: {e}", exc_info=True)
+        return False
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
+class SendShippingIDView(APIView):
+    def post(self, request):
+        name = request.data.get('name')
+        phone_number = request.data.get('phone')
+        order_id = request.data.get('order_id')
+        tracking_id = request.data.get('tracking_id')
 
+        if not all([name, phone_number, order_id, tracking_id]):
+            return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        phone_number = phone_number.strip()
 
+        # Validate phone number format
+        if not phone_number.isdigit() or len(phone_number) != 10:
+            return Response({'error': 'Invalid phone number format'}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-
-
-
-
+        # Send Shipping ID via SMS
+        if send_shipping_id(name, phone_number, order_id, tracking_id):
+            return Response({'message': 'Shipping ID sent successfully'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Failed to send Shipping ID'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
