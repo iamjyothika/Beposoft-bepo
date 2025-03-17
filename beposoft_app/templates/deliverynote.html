@@ -33,6 +33,7 @@
             vertical-align: middle;
             text-align: center;
             padding: 10px;
+            word-break: break-word; /* Ensures long text wraps */
         }
         .table th {
             background-color: #f1f1f1;
@@ -110,6 +111,7 @@
                     <th>Sl No.</th>
                     <th>Image</th>
                     <th>Product</th>
+                    <th>Description</th> <!-- Added Description Column -->
                     <th>Quantity</th>
                 </tr>
             </thead>
@@ -125,6 +127,7 @@
                         {% endif %}
                     </td>
                     <td>{{ warehouse_item.product.name }}</td>
+                    <td>{{ warehouse_item.description }}</td> <!-- New Column for Description -->
                     <td>{{ warehouse_item.quantity }} {{ warehouse_item.product.unit }}</td>
                 </tr>
                 {% endfor %}
@@ -167,7 +170,6 @@
                 let imgWidth = 210; // A4 width in mm
                 let imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-                // Adjust font size for mobile
                 let fontSize = window.innerWidth < 768 ? 10 : 12; 
                 pdf.setFontSize(fontSize);
 
@@ -196,6 +198,5 @@
     </script>
 </body>
 </html>
-
 
 

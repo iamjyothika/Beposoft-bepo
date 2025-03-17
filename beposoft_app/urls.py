@@ -107,6 +107,7 @@ urlpatterns = [
     
     path('api/payment/<int:pk>/reciept/',CreateReceiptAgainstInvoice.as_view()),
     path('api/customer/<int:pk>/ledger/',CustomerOrderLedgerdata.as_view()),
+    path('api/recieptsupdate/<int:id>/',ReceiptViewbyId.as_view()),
     
     
     path('api/perfoma/invoice/create/',CreatePerfomaInvoice.as_view()),
@@ -153,6 +154,7 @@ urlpatterns = [
     
     path('api/product/stock/report/',ProductStockReportView.as_view()),
     path('api/finance-report/',FinancereportAPIView.as_view()),
+    path('api/receipts/get/',AllpaymentReceiptsView.as_view()),
     
     
     

@@ -292,11 +292,17 @@ class ProductSerializerView(serializers.ModelSerializer):
     # Fetch the main product with the same groupID
         main_product = Products.objects.filter(groupID=instance.groupID).order_by('id').first()
 
+
         if instance.type == 'variant' and main_product:
-            if data.get('landing_cost') is None:
-               data['landing_cost'] = main_product.landing_cost
-            if data.get('retail_price') is None:
-               data['retail_price'] = main_product.retail_price
+            if not data.get('landing_cost'):
+                data['landing_cost'] = main_product.landing_cost
+            if not data.get('retail_price'):
+                data['retail_price'] = main_product.retail_price
+            if not data.get('hsn_code'):
+                data['hsn_code'] = main_product.hsn_code 
+        data['warehouse_name'] = instance.warehouse.name if instance.warehouse else (
+        main_product.warehouse.name if main_product and main_product.warehouse else None
+    )          
 
         return data      
 
@@ -313,7 +319,9 @@ class ProductSerializerView(serializers.ModelSerializer):
         """
         Fetch variant details for the same groupID, including images.
         """
-        if obj.type == 'variant':  # Ensure correct check for 'variant'
+        main_product = Products.objects.filter(groupID=obj.groupID).order_by('id').first()
+
+        if main_product:  # Ensure correct check for 'variant'
             variants = Products.objects.filter(groupID=obj.groupID)
             variant_list = []
             for variant in variants:
@@ -328,6 +336,15 @@ class ProductSerializerView(serializers.ModelSerializer):
                     # Use the first available image from SingleProducts if product.image is missing
                     selected_image = image_urls[0] if image_urls else None 
 
+                hsn_code = variant.hsn_code if variant.hsn_code and variant.hsn_code.strip() else main_product.hsn_code
+                
+            
+
+            # ✅ Always inherit Warehouse Name from main product if missing
+                warehouse_name = variant.warehouse.name if variant.warehouse else (
+                    main_product.warehouse.name if main_product.warehouse else None
+                )
+                
 
           
                 # Fetch images for each variant
@@ -336,13 +353,14 @@ class ProductSerializerView(serializers.ModelSerializer):
                     "id": variant.pk,
                     "groupID": variant.groupID,
                     "name": variant.name,
+                    "hsn_code":hsn_code,
                     "image":selected_image,  # Use the first image or None
                     "price": variant.selling_price,
                     "color": variant.color if variant.color else None,
                     "size": variant.size if variant.size else None,
                     "stock": variant.stock,
                     "created_user": variant.created_user.name,
-                    "warehouse_name": variant.warehouse.name if variant.warehouse else None,
+                    "warehouse_name": warehouse_name
                     
                    
                 })
@@ -475,6 +493,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
     name=serializers.CharField(source="product.name")
     actual_price = serializers.SerializerMethodField()
     exclude_price = serializers.SerializerMethodField()
+    price_discount = serializers.SerializerMethodField()
   
     class Meta:
         model = OrderItem
@@ -492,6 +511,7 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
             "quantity",
             "actual_price",
             "exclude_price",
+            "price_discount",
             "image"
         ]
     def get_name(self, obj):
@@ -501,13 +521,29 @@ class OrderItemModelSerializer(serializers.ModelSerializer):
         elif obj.variant:
             return obj.variant.name
         return None
+    def get_price_discount(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        price_discount = max(selling_price - discount, 0)
+
+        return round(price_discount, 2)
+    
+   
+        
+    def get_exclude_price(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        tax = obj.product.tax or 0
+
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax / 100))
+
+        return round(exclude_price, 2)
     
     def get_actual_price(self, obj):
-        # Calculate the actual price based on the product type
-        return int(obj.product.selling_price) if obj.product.selling_price is not None else None
-    
-    def get_exclude_price(self, obj):
-        return int(obj.product.exclude_price) if obj.product.exclude_price is not None else None
+        # directly use exclude_price
+        return self.get_exclude_price(obj)
+
     
 
     
@@ -615,14 +651,14 @@ class BepocartSerializers(serializers.ModelSerializer):
         
 class BepocartSerializersView(serializers.ModelSerializer):
     name = serializers.CharField(source="product.name")
-    tax = serializers.CharField(source="product.tax")
-
-    exclude_price = serializers.CharField(source="product.exclude_price")
+    tax = serializers.FloatField(source="product.tax")
     image = serializers.ImageField(source="product.image")
-
+    selling_price = serializers.FloatField(source="product.selling_price")
+    retail_price = serializers.FloatField(source="product.retail_price")
+    exclude_price = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
-    selling_price = serializers.CharField(source="product.selling_price")
-    retail_price = serializers.CharField(source="product.retail_price")
+
+  
     class Meta:
         model = BeposoftCart
         fields = [
@@ -634,7 +670,17 @@ class BepocartSerializersView(serializers.ModelSerializer):
         user = obj.user
         if user.designation in ['BDO', 'BDM']:
             return obj.product.selling_price  # If designation is BDO or BDM, return the selling price
-        return obj.product.retail_price 
+        return obj.product.retail_price
+    
+    def get_exclude_price(self, obj):
+        selling_price = obj.product.selling_price or 0
+        discount = obj.discount or 0
+        tax = obj.product.tax or 0
+
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax / 100))
+
+        return round(exclude_price, 2) 
     
 
 
@@ -761,6 +807,19 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
         # Calculate the total paid amount from all related payment receipts for this order
         total_paid = obj.recived_payment.aggregate(total_paid=Sum('amount'))['total_paid'] or 0
         return total_paid
+    
+class PaymentReceiptSerializerView(serializers.ModelSerializer):
+    bank=serializers.CharField(source="bank.name")
+    invoice=serializers.CharField(source="order.invoice")
+    customer=serializers.CharField(source="customer.name")
+    created_by=serializers.CharField(source="created_by.name")
+    class Meta:
+        model = PaymentReceipt
+        fields = ["id","payment_receipt","amount","transactionID","received_at","remark","order","customer","bank","invoice","created_by"]
+
+
+
+        
     
 class WarehouseDetailSerializer(serializers.ModelSerializer):
     class Meta:
