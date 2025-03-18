@@ -2923,7 +2923,7 @@ class CreditSalesReportView(BaseTokenView):
                     total_paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(
                         total_paid=Sum('amount')
                     )['total_paid'] or 0.0  
-                    
+                     
                     total_paid_amount = float(total_paid_amount)
                     
                     order_total_amount = float(order.total_amount)  
@@ -2946,6 +2946,7 @@ class CreditSalesReportView(BaseTokenView):
         
         except Exception as e:
             return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class CreditBillsView(BaseTokenView):
@@ -3177,6 +3178,7 @@ class StateOrderDetailsView(BaseTokenView):
         except Exception as e:
           
             return JsonResponse({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  
         
 class DeliveryListView(BaseTokenView):
     def get(self, request,date):
