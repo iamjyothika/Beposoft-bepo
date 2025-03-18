@@ -551,7 +551,7 @@ class ProductCreateView(BaseTokenView):
             # Validate and save product
             logger.info(f"Received data: {request.data}")  # ✅ Log request data
             print(f"Received data: {request.data}") 
-            serializer = ProductsSerializer(data=request.data)
+            serializer = ProductsAddSerializer(data=request.data)
             # print(serializer)
             if serializer.is_valid():
                 product = serializer.save()
@@ -1369,11 +1369,18 @@ class CreateOrder(BaseTokenView):
                 
 
                 # Check stock and decrement
+
+                available_stock = product.stock - product.locked_stock
+                if quantity > available_stock:
+                    return Response({"status": "error", "message": "Insufficient stock for product"}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Lock stock instead of reducing it
+                product.locked_stock += int(quantity)
               
-                if product.stock < quantity:
-                    return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
-                product.stock -= int(quantity)
-                product.save()
+                # if product.stock < quantity:
+                #     return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
+                # product.stock -= int(quantity)
+                # product.save()
                 
 
                 # Create order item for each valid cart item
@@ -1505,8 +1512,24 @@ class CustomerOrderStatusUpdate(BaseTokenView):
             new_status = request.data.get('status')
             if not new_status:
                 return Response({"status": "error", "message": "Status field is required"}, status=status.HTTP_400_BAD_REQUEST)
+            if order.status != new_status and new_status == "Shipped":
+                for item in order.items.all():
+                    product = item.product
+
+                    # Ensure the locked stock is enough to be released
+                    if product.locked_stock >= item.quantity:
+                        product.locked_stock -= item.quantity  # Unlock stock
+                        product.stock -= item.quantity  # Reduce actual stock
+                        product.save()
+                    else:
+                        return Response(
+                            {"status": "error", "message": "Stock inconsistency detected"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
             # Update the order status
+            
+
             order.status = new_status
             order.save()
 
