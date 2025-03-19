@@ -180,6 +180,14 @@ class ProductsSerializer(serializers.ModelSerializer):
         model = Products
         fields = "__all__"
 
+class ProductsAddSerializer(serializers.ModelSerializer):
+    family = serializers.PrimaryKeyRelatedField(many=True, queryset=Family.objects.all())
+    created_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    warehouses = serializers.PrimaryKeyRelatedField(queryset=WareHouse.objects.all(), required=False)
+    class Meta:
+        model = Products
+        exclude = ["exclude_price"]                 
+
 
 
 
@@ -255,6 +263,7 @@ class ProductSingleviewSerializres(serializers.ModelSerializer):
                         "groupID": variant.groupID,
                         "name": variant.name if variant.name else None,  
                         "stock": variant.stock,
+                        "locked_stock":variant.locked_stock,
                         
                         "image": selected_image, # Image URL handling
                         "color":variant.color if variant.color else None,
@@ -809,13 +818,13 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
         return total_paid
     
 class PaymentReceiptSerializerView(serializers.ModelSerializer):
-    bank=serializers.CharField(source="bank.name")
+    bankname=serializers.CharField(source="bank.name")
     invoice=serializers.CharField(source="order.invoice")
     customer=serializers.CharField(source="customer.name")
     created_by=serializers.CharField(source="created_by.name")
     class Meta:
         model = PaymentReceipt
-        fields = ["id","payment_receipt","amount","transactionID","received_at","remark","order","customer","bank","invoice","created_by"]
+        fields = ["id","payment_receipt","amount","transactionID","received_at","remark","order","customer","bank","invoice","created_by","bankname"]
 
 
 

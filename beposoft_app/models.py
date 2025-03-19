@@ -294,11 +294,12 @@ class Products(models.Model):
     purchase_rate = models.FloatField()
     tax = models.FloatField() 
     image = models.ImageField(upload_to='images/', null=True)
-    exclude_price = models.FloatField(editable=False) 
+    exclude_price = models.FloatField(editable=False,default=0.0) 
     selling_price=models.FloatField(default=0.0,null=True)
     landing_cost=models.FloatField(null=True)
     retail_price=models.FloatField(null=True)
     stock = models.IntegerField(default=0)
+    locked_stock = models.IntegerField(default=0)
     color = models.CharField(max_length=100, null=True, blank=True)
     size = models.CharField(max_length=100, null=True, blank=True)
     groupID = models.CharField(max_length=100, null=True, blank=True)
@@ -311,12 +312,6 @@ class Products(models.Model):
         """Generates a unique variantID using UUID"""
         return str(uuid.uuid4())
     
-      
-
-   
-
-   
-
     def save(self, *args, **kwargs):
         if self.selling_price is None:
             self.selling_price = 0.0
@@ -325,9 +320,32 @@ class Products(models.Model):
        
         if not self.variantID:
             self.variantID = self.generate_variant_id()
-        self.calculate_exclude_price()
+     
         
         super().save(*args, **kwargs)
+
+    def lock_stock(self, quantity):
+        """Locks stock without reducing actual stock"""
+        if quantity > (self.stock - self.locked_stock):  
+            raise ValueError("Not enough available stock to lock.")
+        self.locked_stock += quantity
+        self.save()
+
+    def release_lock(self, quantity):
+        """Releases locked stock (if order is canceled or modified)"""
+        if self.locked_stock >= quantity:
+            self.locked_stock -= quantity
+            self.save()
+
+    def reduce_stock(self, quantity):
+        """Reduces stock after order is shipped"""
+        if self.stock >= quantity and self.locked_stock >= quantity:
+            self.stock -= quantity
+            self.locked_stock -= quantity
+            self.save()
+        else:
+            raise ValueError("Not enough stock to fulfill order.")    
+
 
     def __str__(self):
         return self.name
@@ -462,10 +480,25 @@ class Order(models.Model):
             self.invoice = self.generate_invoice_number()
             print(f"Generated invoice number: {self.invoice}")
 
-        if self.pk:  # Check if the object already exists
-            original = Order.objects.get(pk=self.pk)
-            if original.status != self.status:
-                self.updated_at = now()
+        # if self.pk:  # Check if the object already exists
+        #     original = Order.objects.get(pk=self.pk)
+        #     if original.status != self.status:
+        #         self.updated_at = now()
+        if self.pk:  # If updating an existing order
+            previous_status = Order.objects.filter(pk=self.pk).values_list("status", flat=True).first()
+
+            if previous_status and previous_status != self.status:
+                # If order is shipped, reduce stock
+                if self.status == 'Shipped':
+                    for item in self.items.all():
+                        product = item.product
+                        if product.locked_stock >= item.quantity:
+                            product.locked_stock -= item.quantity  # Unlock stock
+                            product.stock -= item.quantity  # Reduce actual stock
+                            product.save()
+                        else:
+                            raise ValueError("Locked stock inconsistency detected!")
+
 
         super().save(*args, **kwargs)
 
@@ -492,6 +525,8 @@ class Order(models.Model):
 
         return str(number).zfill(6)  # Zero-pad to 6 digits (FPN000001, FPN000002, etc.)
 
+     
+
     def __str__(self):
         return f"Order {self.invoice} by {self.customer}"
 
@@ -512,6 +547,47 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} (x{self.quantity})"
+    
+    def save(self, *args, **kwargs):
+        product = self.product
+
+        if self.pk:  # If updating an existing order item
+            original_quantity = OrderItem.objects.get(pk=self.pk).quantity  # Get original quantity
+            
+            if self.quantity != original_quantity:  # If quantity has changed
+                change_in_quantity = self.quantity - original_quantity  # Difference
+                
+                # Check if additional stock is available for locking
+                if change_in_quantity > 0:  
+                    available_stock = product.stock - product.locked_stock
+                    if change_in_quantity > available_stock:
+                        raise ValueError("Not enough available stock to lock additional quantity.")
+                    product.locked_stock += change_in_quantity  # Lock additional stock
+
+                # If quantity is reduced, release stock
+                elif change_in_quantity < 0:  
+                    product.locked_stock += change_in_quantity  # Reduce locked stock
+
+        else:  # New order item being created
+            available_stock = product.stock - product.locked_stock
+            if self.quantity > available_stock:
+                raise ValueError("Not enough available stock to lock.")
+            product.locked_stock += self.quantity  # Lock stock
+
+        product.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Release locked stock if the order item is deleted"""
+        product = self.product
+
+        if product.locked_stock >= self.quantity:  # Ensure locked stock is sufficient
+            product.locked_stock -= self.quantity  # Unlock the stock
+            product.save()
+
+        super().delete(*args, **kwargs)
+
+
 
 
 
