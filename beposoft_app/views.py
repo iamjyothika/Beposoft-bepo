@@ -1338,72 +1338,64 @@ class VariantProductsByProductView(BaseTokenView):
         
 
     
-
 class CreateOrder(BaseTokenView):
+    @transaction.atomic  # Ensures database consistency
     def post(self, request):
         try:
-            # Authenticate user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
-           
-            
-            # Retrieve cart items and validate serializer
+
             cart_items = BeposoftCart.objects.filter(user=authUser)
+            if not cart_items.exists():
+                return Response({"status": "error", "message": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = OrderSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
             order = serializer.save()
-            print(serializer.data)
+            
+            # Dictionary to track locked stock updates
+            locked_stock_updates = {}
+
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
-
-                # Convert values to Decimal for consistency
                 quantity = Decimal(item_data.quantity)
-                selling_price = Decimal(item_data.product.selling_price)
-                discount = Decimal(item_data.discount or 0)
-                tax = Decimal(item_data.product.tax or 0)
-                rate = Decimal(item_data.product.selling_price or 0)
 
-                
+                # Lock the product row for update inside a transaction
+                product = Products.objects.select_for_update().get(pk=product.pk)
 
-                # Check stock and decrement
+                # ✅ Ensure locked stock is updated correctly without doubling
+                if product.pk in locked_stock_updates:
+                    locked_stock_updates[product.pk] += quantity
+                else:
+                    locked_stock_updates[product.pk] = max(product.locked_stock, 0) + quantity
 
-                available_stock = product.stock - product.locked_stock
-                if quantity > available_stock:
-                    return Response({"status": "error", "message": "Insufficient stock for product"}, status=status.HTTP_400_BAD_REQUEST)
-
-                # Lock stock instead of reducing it
-                product.locked_stock += int(quantity)
-              
-                # if product.stock < quantity:
-                #     return Response({"status": "error", "message": "Insufficient stock for single product"}, status=status.HTTP_400_BAD_REQUEST)
-                # product.stock -= int(quantity)
-                # product.save()
-                
-
-                # Create order item for each valid cart item
+                # ✅ Create order item
                 OrderItem.objects.create(
                     order=order,
                     product=product,
                     quantity=int(quantity),
-                    discount=discount,
-                    tax=tax,
-                    rate=rate,
+                    discount=Decimal(item_data.discount or 0),
+                    tax=Decimal(item_data.product.tax or 0),
+                    rate=Decimal(item_data.product.selling_price or 0),
                     description=item_data.note,
-                  
-                    
                 )
             
-            # Clear cart after successful order creation
+            # ✅ Apply locked stock updates safely
+            for product_id, locked_qty in locked_stock_updates.items():
+                product = Products.objects.get(pk=product_id)
+                product.locked_stock = locked_qty  # Update locked stock correctly
+                product.save()
+            
+            # Clear cart after order creation
             cart_items.delete()
             return Response({"status": "success", "message": "Order created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         except Exception as e:
             logger.error(f"Unexpected error during order creation: {e}", exc_info=True)
             return Response({"status": "error", "message": "An unexpected error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class OrderListView(BaseTokenView):
     def get(self, request):
@@ -1497,49 +1489,87 @@ class CustomerOrderItems(BaseTokenView):
 
 logger = logging.getLogger(__name__)
 
+
 class CustomerOrderStatusUpdate(BaseTokenView):
+    @transaction.atomic
     def put(self, request, pk):
         authUser, error_response = self.get_user_from_token(request)
         if error_response:
             return error_response
 
         try:
-            order = Order.objects.filter(pk=pk).first()
+            order = Order.objects.select_for_update().filter(pk=pk).first()
             if not order:
                 return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            # Extract new status from request data
             new_status = request.data.get('status')
             if not new_status:
                 return Response({"status": "error", "message": "Status field is required"}, status=status.HTTP_400_BAD_REQUEST)
-            if order.status != new_status and new_status == "Shipped":
+
+            locked_stock_updates = {}
+
+            # ✅ Aggregate quantities by product
+            if new_status in ["Shipped", "Invoice Rejected"]:
                 for item in order.items.all():
-                    product = item.product
+                    product = Products.objects.select_for_update().filter(pk=item.product.pk).first()
+                    if not product:
+                        return Response({"status": "error", "message": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
-                    # Ensure the locked stock is enough to be released
-                    if product.locked_stock >= item.quantity:
-                        product.locked_stock -= item.quantity  # Unlock stock
-                        product.stock -= item.quantity  # Reduce actual stock
-                        product.save()
+                    # Accumulate quantities for this product
+                    if product.pk in locked_stock_updates:
+                        locked_stock_updates[product.pk] += item.quantity
                     else:
-                        return Response(
-                            {"status": "error", "message": "Stock inconsistency detected"},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
+                        locked_stock_updates[product.pk] = item.quantity
 
-            # Update the order status
-            
+            # ✅ Apply the updates
+            for product_id, qty_to_release in locked_stock_updates.items():
+                product = Products.objects.get(pk=product_id)
+
+                if product.locked_stock < qty_to_release:
+                    return Response({"status": "error", "message": "Stock inconsistency detected"}, status=status.HTTP_400_BAD_REQUEST)
+
+                product.locked_stock -= qty_to_release
+
+                # ✅ If Shipped, also reduce actual stock
+                if new_status == "Shipped":
+                    product.stock -= qty_to_release
+
+                product.save()
 
             order.status = new_status
             order.save()
 
             return Response({"status": "success", "message": "Order status updated successfully"}, status=status.HTTP_200_OK)
 
+        except DatabaseError as db_err:
+            logger.error(f"Database error: {db_err}", exc_info=True)
+            return Response({"status": "error", "message": "Database error occurred", "error": str(db_err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        
+class ShippingManagementView(BaseTokenView):
+    def put(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+
+            order = Order.objects.filter(pk=pk).first()
+            if not order:
+                return Response({"status": "error", "message": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = OrderSerializer(order, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Order updated successfully"}, status=status.HTTP_200_OK)
+            return Response({"status": "error", "message": "Invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+        
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
         
 class ShippingManagementView(BaseTokenView):
     def put(self,request,pk):
@@ -1758,6 +1788,7 @@ class Cart(BaseTokenView):
         if existing_cart_item:
             # If the product is already in the cart, return an error message
             return Response({"status": "error", "message": "Product already exists in the cart"}, status=status.HTTP_400_BAD_REQUEST)
+       
         BeposoftCart.objects.create(product=product, user=user, quantity=quantity)
         return Response({"status": "success", "message": "Product added to cart"}, status=status.HTTP_201_CREATED)
 
@@ -2065,17 +2096,7 @@ class CreatePerfomaInvoice(BaseTokenView):
             serializer = PerfomaInvoiceOrderSerializers(data=request.data)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            
-            
-           
-            
-            # Retrieve cart items and validate serializer
-           
-            
-        
-            
-           
-           
+         # Retrieve cart items and validate serializer
             
             order = serializer.save()  # Create order
             print(order)
