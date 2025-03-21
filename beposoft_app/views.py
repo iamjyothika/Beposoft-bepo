@@ -1404,10 +1404,10 @@ class OrderListView(BaseTokenView):
             if error_response:
                 return error_response
 
-            # Optimize Query
+            # Optimize Query and Order by order_date descending
             orders = Order.objects.select_related(
                 "manage_staff", "customer", "state", "family"
-            ).all()
+            ).order_by("-order_date")
 
             # Optimize Count Queries
             invoice_counts = orders.aggregate(
