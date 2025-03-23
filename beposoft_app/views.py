@@ -4406,7 +4406,8 @@ class CustomerUploadView(BaseTokenView):
                         zip_code=row['zipcode'] if pd.notna(row['zipcode']) else None,
                         city=row['city'] if pd.notna(row['city']) else None,
                         state=state_instance,
-                        created_at=row['created_at'] if pd.notna(row['created_at']) else timezone.now(),
+                        created_at=row['created_at'] if pd.notna(row['create'
+                        'd_at']) else timezone.now(),
                         manager=authUser
                     )
                     customer.save()
