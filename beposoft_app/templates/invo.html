@@ -58,75 +58,102 @@
                 </tbody>
             </table>
             
-            <table class="table table-bordered mt-3">
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #ccc;">
                 <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>HSN Code</th>
-                        <th>Rate</th>
-                        <th>Tax (%)</th>
-                        <th>Tax Amount</th>
-                        <th>Net Price</th>
-                        <th>Price</th>
-                        <th>Qty</th>
-                        <th>Amount</th>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="border: 1px solid #ccc; padding: 8px;">Product</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">HSN Code</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Rate</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Tax (%)</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Tax Amount</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Net Price</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Dis</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Price</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Qty</th>
+                        <th style="border: 1px solid #ccc; padding: 8px;">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td>{{ item.product.name }}</td>
-                        <td>{{ item.product.hsn_code }}</td>
-                        <td>{{ item.product.selling_price|floatformat:2 }}</td>
-                        <td>{{ item.product.tax }}</td>
-                        <td>{{ item.tax_amount|floatformat:2 }}</td>
-                        <td>{{ item.final_price|floatformat:2 }}</td>
-                        <td>{{ item.product.selling_price|floatformat:2 }}</td>
-                        <td>{{ item.quantity }}</td>
-                        <td>{{ item.total|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.product.name }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.product.hsn_code }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.product.selling_price|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.product.tax }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.tax_amount|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.final_price|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">0</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.product.selling_price|floatformat:2 }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.quantity }}</td>
+                        <td style="border: 1px solid #ccc; padding: 8px;">{{ item.total|floatformat:2 }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
-            
-            <table class="table table-bordered mt-3">
-                <thead>
+                <tfoot>
                     <tr>
-                        <th>Bank Details</th>
-                        <th>Financial Summary</th>
+                        <td colspan="9" style="text-align: right; font-weight: bold; border: 1px solid #ccc; padding: 8px;">TOTAL</td>
+                        <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">{{ totalamount|floatformat:2 }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>
-                            <strong>A/C Name:</strong> {{ order.bank.created_user }}<br>
-                            <strong>Bank A/C:</strong> {{ order.bank.account_number }}<br>
-                            <strong>Bank Name:</strong> {{ order.bank.name }}<br>
-                            <strong>Bank IFSC:</strong> {{ order.bank.ifsc_code }}<br>
-                            <strong>Branch:</strong> {{ order.bank.branch }}
-                        </td>
-                        <td>
-                            <strong>Total:</strong> {{ totalamount|floatformat:2 }}<br>
-                            {% for item in items %}
-                            <strong>Discounted Amount:</strong> {{ item.discount|floatformat:2 }}<br>
-                            <strong>Net Amount Before Tax:</strong> {{ item.total|floatformat:2 }}<br>
-                            <strong>Total Tax Amount:</strong> {{ item.tax_amount|floatformat:2 }}<br>
-                            {% endfor %}
-                            <strong>Shipping Charge:</strong> {{ order.shipping_charge|floatformat:2 }}<br>
-                            <strong>Total Payable Amount:</strong> {{ grand_total|floatformat:2 }}<br>
-                            <!-- <strong>Advance Paid:</strong> {{ order.advance_paid|floatformat:2 }}<br> -->
-                            <!-- <strong>Balance:</strong> {{ order.balance|floatformat:2 }} -->
-                        </td>
-                    </tr>
-                </tbody>
+                </tfoot>
             </table>
-            
-            <div class="text-center mt-3">
+        
+            <!-- Bank and Financial Summary -->
+            <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+        
+                <!-- Bank Details -->
+                <div style="width: 48%;">
+                    <h3 style="margin-bottom: 10px;">Bank Details</h3>
+                    <p><strong>A/C Name:</strong> {{ order.bank.created_user }}</p>
+                    <p><strong>Bank A/C:</strong> {{ order.bank.account_number }}</p>
+                    <p><strong>Bank Name:</strong> {{ order.bank.name }}</p>
+                    <p><strong>Bank IFSC:</strong> {{ order.bank.ifsc_code }}</p>
+                    <p><strong>Branch:</strong> {{ order.bank.branch }}</p>
+                </div>
+        
+                <!-- Financial Summary -->
+                <div style="width: 48%;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Discounted Amount</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">0</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Net Amount</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ totalamount|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Net Amount Before Tax</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ net_amount_before_tax|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Total Tax Amount</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ total_tax|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Shipping Charge</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ order.shipping_charge|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Total Payable Amount</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ grand_total|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Advance Paid</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">0</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold;">Balance</td>
+                            <td style="border: 1px solid #ccc; padding: 8px; text-align: right;">{{ grand_total|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        
+            <!-- Footer -->
+            <div style="text-align: center; margin-top: 20px;">
                 <p><strong>Thank you!</strong></p>
                 <p>Invoice was created on a computer and is valid without the signature and seal.</p>
             </div>
-        </div> 
-
         <div class="button-container">
             <button class="btn btn-primary no-print" id="downloadBtn" onclick="downloadInvoice()">Download Invoice</button>
         </div>

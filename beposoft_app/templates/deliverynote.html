@@ -32,8 +32,9 @@
         .table th, .table td {
             vertical-align: middle;
             text-align: center;
-            padding: 10px;
-            word-break: break-word; /* Ensures long text wraps */
+            padding: 8px;
+            font-size: 12px;
+            word-break: break-word;
         }
         .table th {
             background-color: #f1f1f1;
@@ -47,27 +48,23 @@
             max-width: 100px;
             height: auto;
         }
+        .bill-ship-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        .bill-ship {
+            width: 48%;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .bill-ship p {
+            margin: 2px 0;
+        }
         @media print {
             .no-print { display: none !important; }
-        }
-        @media (max-width: 767px) {
-            .invoice-container {
-                padding: 10px;
-                font-size: 11px;
-            }
-            .invoice-header h2 {
-                font-size: 16px;
-            }
-            .invoice-header p {
-                font-size: 11px;
-            }
-            .table th, .table td {
-                font-size: 10px;
-                padding: 6px;
-            }
-            .signature {
-                max-width: 70px;
-            }
         }
     </style>
 </head>
@@ -82,28 +79,28 @@
         
         <div class="row mt-3">
             <div class="col-md-6 col-12">
-                <p><strong>Invoice Number:</strong> {{ order.invoice }}</p>
-                <p><strong>Sales Person:</strong> {{ order.manage_staff }}</p>
+                <p><strong style="font-size:15px">Invoice Number:</strong> {{ order.invoice }}</p>
+                <p><strong style="font-size:15px">Sales Person:</strong> {{ order.manage_staff }}</p>
             </div>
             <div class="col-md-6 col-12 text-end">
-                <p><strong>Invoice Date:</strong> {{ order.order_date }}</p>
+                <p><strong style="font-size:15px">Invoice Date:</strong> {{ order.order_date }}</p>
             </div>
         </div>
         
-        <table class="table table-bordered text-center mt-3">
-            <thead class="table-light">
-                <tr>
-                    <th>Bill to</th>
-                    <th>Ship to</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{{ order.customer.name }}<br>{{ order.customer.address }}<br><strong>Phone:</strong> {{ order.customer.phone }}</td>
-                    <td>{{ order.billing_address.name }}<br>{{ order.billing_address.address }}<br><strong>Phone:</strong> {{ order.billing_address.phone }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="bill-ship-container">
+            <div class="bill-ship">
+                <p><strong>Bill to:</strong></p>
+                <p>{{ order.customer.name }}</p>
+                <p>{{ order.customer.address }}</p>
+                <p><strong>Phone:</strong> {{ order.customer.phone }}</p>
+            </div>
+            <div class="bill-ship">
+                <p><strong>Ship to:</strong></p>
+                <p>{{ order.billing_address.name }}</p>
+                <p>{{ order.billing_address.address }}</p>
+                <p><strong>Phone:</strong> {{ order.billing_address.phone }}</p>
+            </div>
+        </div>
 
         <table class="table table-bordered text-center mt-3">
             <thead class="table-light">
@@ -111,7 +108,7 @@
                     <th>Sl No.</th>
                     <th>Image</th>
                     <th>Product</th>
-                    <th>Description</th> <!-- Added Description Column -->
+                    <th>Description</th>
                     <th>Quantity</th>
                 </tr>
             </thead>
@@ -127,7 +124,7 @@
                         {% endif %}
                     </td>
                     <td>{{ warehouse_item.product.name }}</td>
-                    <td>{{ warehouse_item.description }}</td> <!-- New Column for Description -->
+                    <td>{{ warehouse_item.description }}</td>
                     <td>{{ warehouse_item.quantity }} {{ warehouse_item.product.unit }}</td>
                 </tr>
                 {% endfor %}
@@ -157,17 +154,17 @@
     <script>
         function downloadDeliveryNote() {
             const button = document.getElementById("downloadBtn");
-            button.style.display = "none"; // Hide button during PDF creation
+            button.style.display = "none";
 
             html2canvas(document.querySelector("#invoice"), {
-                scale: window.innerWidth < 768 ? 2 : 3, // Adjust scale for mobile
+                scale: window.innerWidth < 768 ? 2 : 3,
                 useCORS: true
             }).then(canvas => {
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF("p", "mm", "a4");
 
                 const imgData = canvas.toDataURL("image/png");
-                let imgWidth = 210; // A4 width in mm
+                let imgWidth = 210;
                 let imgHeight = (canvas.height * imgWidth) / canvas.width;
 
                 let fontSize = window.innerWidth < 768 ? 10 : 12; 
@@ -192,11 +189,10 @@
                 }
 
                 pdf.save("Delivery_Note.pdf");
-                button.style.display = "block"; // Show button again after download
+                button.style.display = "block";
             });
         }
     </script>
 </body>
 </html>
-
 

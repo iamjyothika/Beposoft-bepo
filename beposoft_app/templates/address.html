@@ -76,9 +76,9 @@
         </div>
         {% endif %}
 
-        <div class="mt-4">
+        <div class="mt-4 mb-3">
             <p class="to">TO</p>
-            <p class="address">
+            <p class="address" style="margin-left:35px">
                 {{ shipping_data.name }}<br>
                 {{ shipping_data.address }}<br>
                 Pin: {{ shipping_data.zipcode }}, {{ shipping_data.city }}, {{ shipping_data.state.name }}<br>
@@ -88,7 +88,7 @@
         </div>
         <div class="mt-3">
             <p class="from">FROM</p>
-            <p>
+            <p style="margin-left:35px">
                 MICHAEL EXPORT AND IMPORT PRIVATE LIMITED<br>
                 H.NO/X/153-B, Floor-Jubilee Nagar<br>
                 PIN: 682003, Ernakulam, Kerala, India<br>
@@ -96,7 +96,8 @@
                 GST NO: 32AJACM8151G2ZH
             </p>
         </div>
-        <p class="small">This article does not contain any item prohibited under Indian post office act 1898/post SIA Guide.</p>
+        <p class="small"> This article does not contain any item prohibited under Indian post office act 1898/post SHA Guide Part-1/Air
+            Craft (Carriage of Dangerous Goods) Rules 2003 or any other item prohibited for carriage by Air.</p>
         <div class="content">
             <p><strong>Content:</strong> {{ order.family.name }}</p>
             <ul>
@@ -115,7 +116,10 @@
             NO PROHIBITED ITEMS
         </div>
         <p class="prohibited-items">
-            Explosives, flammable & inflammable chemicals, gases, compressed liquids, etc. Do not contain any prohibited items.
+            Explosives, flammable & inflammable chemicals, gasses compressed liquefied or deeply Refrigerated corrosive substance
+            drug electron items, television, VCR, transistor, computer, Computer parts calculators alarm goods alam clocks, including
+            magnetized materials or articles Liable to damage aircrafts ect. I ...PRASHANT...hereby declare that the speed post article
+            Does not contain any prohibited items reffered above
         </p>
         <div class="mt-3">
             <p><strong>AW = {{ warehouse.actual_weight }}kg.</strong></p>
