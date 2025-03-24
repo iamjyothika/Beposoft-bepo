@@ -3861,53 +3861,58 @@ class StaffBasedCustomers(BaseTokenView):
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
 def GenerateInvoice(request, pk):
     order = Order.objects.filter(pk=pk).first()
     items = OrderItem.objects.filter(order=order)
     
     total_amount = 0
     total_tax_amount = 0
+    total_discount = 0
+    net_amount_before_tax = 0
+    total_quantity = 0
     
     for item in items:
         tax_rate = item.product.tax or 0.0
-        price_without_tax = (
-            item.product.selling_price / (1 + tax_rate / 100)
-            if item.product.selling_price else 0.0
-        )
+        quantity = item.quantity or 0
+        selling_price = item.product.selling_price or 0.0
+        discount = item.discount or 0.0
         
-        tax_amount = (
-            item.product.selling_price - price_without_tax
-            if item.product.selling_price else 0.0
-        )
-        
-        final_price = (item.product.selling_price or 0.0) - (item.discount or 0.0)
-        total = final_price * (item.quantity or 0)
-        
+        # Price excluding tax
+        price_without_tax = selling_price / (1 + tax_rate / 100) if tax_rate else selling_price
+        tax_amount = selling_price - price_without_tax
+
+        final_price = selling_price - discount
+        total = final_price * quantity
+        discount_total = discount * quantity
+
         item.final_price = final_price
         item.total = total
         item.tax_amount = tax_amount
-        
+
         total_amount += total
-        total_tax_amount += tax_amount
-    
+        total_tax_amount += tax_amount * quantity
+        total_discount += discount_total
+        net_amount_before_tax += (price_without_tax * quantity) - discount_total
+        total_quantity += quantity
+
     shipping_charge = order.shipping_charge or 0.0
     grand_total = total_amount + shipping_charge
-    # balance = grand_total - (order.advance_paid or 0.0)
-    
-    # Context data to pass to the template
+
     context = {
         "order": order,
         "items": items,
         "totalamount": total_amount,
         "total_tax_amount": total_tax_amount,
+        "total_quantity": total_quantity,
+        "discounted_amount": total_discount,
+        "net_amount_before_tax": net_amount_before_tax,
         "shipping_charge": shipping_charge,
         "grand_total": grand_total,
-        # "balance": balance,
     }
-    
+
     return render(request, 'invo.html', context)
+
+
 
 # def Invo(request):
 #     return render (request,"invo.html")
