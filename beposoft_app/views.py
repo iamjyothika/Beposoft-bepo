@@ -2092,13 +2092,19 @@ class CreatePerfomaInvoice(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            warehouse_id = request.data.get("warehouse_id")
+            if not warehouse_id:
+                return Response({"status": "error", "message": "Warehouse ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Retrieve and validate the warehouse object
+            warehouse = get_object_or_404(WareHouse, pk=warehouse_id)
             cart_items = BeposoftCart.objects.filter(user=authUser)
             serializer = PerfomaInvoiceOrderSerializers(data=request.data)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
          # Retrieve cart items and validate serializer
             
-            order = serializer.save()  # Create order
+            order = serializer.save(warehouses_obj=warehouse)   # Create order
             print(order)
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)

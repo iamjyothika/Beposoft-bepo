@@ -754,6 +754,7 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
     customerID = serializers.IntegerField(source="customer.pk")
     perfoma_items = PerfomaInvoiceProducts(many=True,read_only=True)
     company_name=serializers.CharField(source="company.name")
+    warehouse_id = serializers.IntegerField(source="warehouses_obj.id", read_only=True)
     class Meta:
         model = PerfomaInvoiceOrder
         fields = ["id","manage_staff","company","company_name","customer",
@@ -761,7 +762,7 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
                   "shipping_mode","code_charge","order_date","family",
                   "state","status","total_amount",
                   "payment_receipts",
-                  "shipping_charge","customerID","perfoma_items"]
+                  "shipping_charge","customerID","perfoma_items","warehouse_id"]
     def to_representation(self, instance):
         # Add manage_staff_designation to the context of nested serializers
         self.context["manage_staff_designation"] = instance.manage_staff.designation
