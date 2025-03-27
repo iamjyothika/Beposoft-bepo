@@ -980,6 +980,7 @@ class StateBaseOrderSerializers(serializers.ModelSerializer):
 class WareHouseSerializer(serializers.ModelSerializer):
     invoice=serializers.CharField(source="order.invoice")
     customer=serializers.CharField(source="order.customer.name")
+    customer_id=serializers.CharField(source="order.customer.id")
     order_date=serializers.DateTimeField(source="order.order_date")
     volume_weight = serializers.SerializerMethodField()
 
