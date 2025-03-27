@@ -2165,12 +2165,8 @@ class PerfomaInvoiceListView(BaseTokenView):
 
             # Serialize the orders
             serializer = PerfomaInvoiceProductsSerializers(orders, many=True)
-<<<<<<< HEAD
             
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
-=======
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
->>>>>>> 54787a4e2d9d62367db2c1f8ad6e991dc83e1cd5
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
