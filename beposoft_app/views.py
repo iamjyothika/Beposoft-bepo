@@ -288,7 +288,8 @@ class StaffOrders(BaseTokenView):
             if error_response:
                 return error_response
 
-            orders = Order.objects.filter(manage_staff=user.pk)
+            # Assuming 'created_at' is the date field you want to sort by
+            orders = Order.objects.filter(manage_staff=user.pk).order_by('order_date')
 
             serialized_orders = OrderModelSerilizer(orders, many=True)
 
@@ -302,7 +303,6 @@ class StaffOrders(BaseTokenView):
                 "message": "An error occurred while fetching orders",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-          
 
 
 class UserDataUpdate(BaseTokenView):
@@ -2160,10 +2160,17 @@ class PerfomaInvoiceListView(BaseTokenView):
             if error_response:
                 return error_response
 
-            orders = PerfomaInvoiceOrder.objects.all()
+            # Assuming 'created_at' is the field representing the order creation date
+            orders = PerfomaInvoiceOrder.objects.all().order_by('order_date')
+
+            # Serialize the orders
             serializer = PerfomaInvoiceProductsSerializers(orders, many=True)
+<<<<<<< HEAD
             
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
+=======
+            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+>>>>>>> 54787a4e2d9d62367db2c1f8ad6e991dc83e1cd5
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -2171,7 +2178,7 @@ class PerfomaInvoiceListView(BaseTokenView):
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
         
 class PerfomaInvoiceDetailView(BaseTokenView):
     def get(self, request, invoice):
@@ -2198,14 +2205,23 @@ class PerformaOrderStaff(BaseTokenView):
             if error_response:
                 return error_response
 
-            perfoma_orders = PerfomaInvoiceOrder.objects.filter(manage_staff=authUser)
+            perfoma_orders = PerfomaInvoiceOrder.objects.filter(
+                manage_staff=authUser
+            ).order_by('order_date')  # Replace 'created_at' with your actual date field
+
             serializer = PerformaOrderListSerilaizer(perfoma_orders, many=True)
 
-            return Response({"message": "Perfoma orders successfully retrieved", "data": serializer.data}, status=status.HTTP_200_OK)
-        
-        except Exception as e:
-            return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "message": "Perfoma orders successfully retrieved",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
 
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": "An error occurred",
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CreateCompnayDetailsView(BaseTokenView):
@@ -2341,25 +2357,21 @@ class DailyGoodsView(BaseTokenView):
             if error_response:
                 return error_response
             
-            warehouse=Warehousedata.objects.all()
+            warehouse = Warehousedata.objects.all()
             
             seen_dates = set()
-            response_data=[]
-        
+            response_data = []
+
             for box_detail in warehouse:
-               
                 if (box_detail.shipped_date not in seen_dates) and (box_detail.shipped_date is not None):
                     boxes_for_date = warehouse.filter(shipped_date=box_detail.shipped_date)
                     total_weight = 0
                     for box in boxes_for_date:
                         try:
                             total_weight += float(box.weight)
-
-
                         except (ValueError, TypeError):
-                            continue 
+                            continue
 
-                    # Calculate total volume weight
                     total_volume_weight = 0
                     for box in boxes_for_date:
                         try:
@@ -2368,52 +2380,53 @@ class DailyGoodsView(BaseTokenView):
                             height = float(box.height)
                             total_volume_weight += (length * breadth * height) / 6000
                         except (ValueError, TypeError):
-                            continue 
-                    total_shipping_charge =0  
+                            continue
+
+                    total_shipping_charge = 0
                     for box in boxes_for_date:
                         try:
                             total_shipping_charge += float(box.shipping_charge)
                         except (ValueError, TypeError):
                             continue
+
                     total_actual_weight = 0
                     for box in boxes_for_date:
                         try:
                             total_actual_weight += float(box.actual_weight)
                         except (ValueError, TypeError):
-                            continue 
-                     # Calculate total parcel amount
+                            continue
+
                     total_parcel_amount = 0
                     for box in boxes_for_date:
                         try:
                             total_parcel_amount += float(box.parcel_amount)
                         except (ValueError, TypeError):
-                            continue       
+                            continue
 
-                    total_boxes = boxes_for_date.count()    
+                    total_boxes = boxes_for_date.count()
 
                     # Serialize the boxes for the date
                     serializer = WarehousedataSerializer(boxes_for_date, many=True)
-                
 
                     # Add the data for the current shipped_date
                     response_data.append({
                         "shipped_date": box_detail.shipped_date,
-                        "total_boxes":total_boxes,
-
+                        "total_boxes": total_boxes,
                         "total_weight": round(total_weight, 2),
                         "total_volume_weight": round(total_volume_weight, 2),
-                        "total_shipping_charge":round(total_shipping_charge,2),
-                        "total_actual_weight": round(total_actual_weight, 2), 
+                        "total_shipping_charge": round(total_shipping_charge, 2),
+                        "total_actual_weight": round(total_actual_weight, 2),
                         "total_parcel_amount": round(total_parcel_amount, 2),
-                                          #shipping_charge=delivery_charge
                         # "boxes": serializer.data
                     })
 
                     seen_dates.add(box_detail.shipped_date)
 
+            # Sort by shipped_date descending
+            response_data.sort(key=lambda x: x['shipped_date'], reverse=True)
+
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
-         
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -2779,12 +2792,10 @@ class GRVUpdateView(BaseTokenView):
                 
 
             
-
-
 class SalesReportView(BaseTokenView):
     def get(self, request):
         try:
-            # Assuming get_user_from_token is a method that retrieves the user from a token
+            # Authenticate the user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
@@ -2792,23 +2803,22 @@ class SalesReportView(BaseTokenView):
             # Fetch all orders
             orders = Order.objects.all()
 
-            # Approved order statuses
+            # Approved statuses
             approved_statuses = [
-                'Approved', 
-                'Shipped', 
-                'Invoice Created', 
-                'Invoice Approved', 
+                'Approved',
+                'Shipped',
+                'Invoice Created',
+                'Invoice Approved',
                 'Waiting For Confirmation',
-                'Invoice Rejected',  # Typo fixed from 'Rejectd'
-                'To Print', 
-                'Processing', 
+                'Invoice Rejected',
+                'To Print',
+                'Processing',
                 'Completed'
             ]
 
-            # Get distinct dates for orders
-            distinct_dates = orders.values_list('order_date', flat=True).distinct()
+            # Get distinct order dates in descending order
+            distinct_dates = orders.order_by('-order_date').values_list('order_date', flat=True).distinct()
 
-            # Prepare the report data
             report_data = []
 
             for date in distinct_dates:
@@ -2816,18 +2826,29 @@ class SalesReportView(BaseTokenView):
                 total_amount = daily_orders.aggregate(total=Sum('total_amount'))['total'] or 0
                 total_bills = daily_orders.count()
 
-                # Approved orders
+                # Approved
                 approved_bills = daily_orders.filter(status__in=approved_statuses)
                 approved_count = approved_bills.count()
                 approved_amount = approved_bills.aggregate(total=Sum('total_amount'))['total'] or 0
 
-                # Rejected orders
+                # Rejected
                 rejected_bills = daily_orders.exclude(status__in=approved_statuses)
                 rejected_count = rejected_bills.count()
                 rejected_amount = rejected_bills.aggregate(total=Sum('total_amount'))['total'] or 0
 
-                # Order details for the current date
-                order_details = daily_orders.values('id','invoice', 'order_date', 'status', 'total_amount', 'customer__name', 'manage_staff__name','company__name','state__name','family__name')
+                # Order details
+                order_details = daily_orders.values(
+                    'id',
+                    'invoice',
+                    'order_date',
+                    'status',
+                    'total_amount',
+                    'customer__name',
+                    'manage_staff__name',
+                    'company__name',
+                    'state__name',
+                    'family__name'
+                )
 
                 report_data.append({
                     "date": date,
@@ -2841,14 +2862,14 @@ class SalesReportView(BaseTokenView):
                         "bills": rejected_count,
                         "amount": rejected_amount,
                     },
-                    "order_details": list(order_details), 
+                    "order_details": list(order_details),
                 })
 
             return Response({"sales_report": report_data}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
         
 
 class InvoiceReportView(BaseTokenView):
@@ -2935,11 +2956,9 @@ class BillsView(BaseTokenView):
         except Exception as e :
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-
 class CreditSalesReportView(BaseTokenView):
     def get(self, request):
         try:
-            # Assuming get_user_from_token method validates the token and fetches the user
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response  
@@ -2949,9 +2968,13 @@ class CreditSalesReportView(BaseTokenView):
             grouped_orders = defaultdict(list)
             for order in orders:
                 grouped_orders[order.order_date].append(order)
-            
+
+            # Sort the grouped_orders by date descending
+            sorted_dates = sorted(grouped_orders.keys(), reverse=True)
+
             response_data = []
-            for date, orders_list in grouped_orders.items():
+            for date in sorted_dates:
+                orders_list = grouped_orders[date]
                 date_data = []
                 for order in orders_list:
                     total_paid_amount = PaymentReceipt.objects.filter(order=order).aggregate(
@@ -2959,12 +2982,12 @@ class CreditSalesReportView(BaseTokenView):
                     )['total_paid'] or 0.0  
                      
                     total_paid_amount = float(total_paid_amount)
-                    
                     order_total_amount = float(order.total_amount)  
                     balance_amount = order_total_amount - total_paid_amount
                     
                     serializer = OrderDetailSerializer(order)
                     order_data = serializer.data
+                    order_data['balance_amount'] = balance_amount  # Optional: Include balance
                     
                     date_data.append(order_data)
                 
@@ -2980,8 +3003,6 @@ class CreditSalesReportView(BaseTokenView):
         
         except Exception as e:
             return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 class CreditBillsView(BaseTokenView):
     def get(self,request,date):
@@ -3066,7 +3087,6 @@ class CODBillsView(BaseTokenView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
 
-
 class ProductSalesReportView(APIView):
     def get(self, request):
         try:
@@ -3083,7 +3103,7 @@ class ProductSalesReportView(APIView):
             grouped_data = defaultdict(lambda: defaultdict(list))
 
             for item in order_items:
-                # Parse `order_date`
+                # Parse order_date
                 date = item.order.order_date
                 formatted_date = (
                     date if isinstance(date, str) else date.strftime('%Y-%m-%d')
@@ -3100,9 +3120,10 @@ class ProductSalesReportView(APIView):
                 product.name: product.stock for product in Products.objects.all()
             }
 
-            # Format the final response
+            # Format the final response (latest date first)
             formatted_response = []
-            for date, products in grouped_data.items():
+            for date in sorted(grouped_data.keys(), reverse=True):  # Sort dates descending
+                products = grouped_data[date]
                 for product, data in products.items():
                     formatted_response.append({
                         "date": date,
@@ -3117,10 +3138,7 @@ class ProductSalesReportView(APIView):
             return Response(
                 {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        
-        
+            )    
 
 
         
@@ -3878,10 +3896,11 @@ def GenerateInvoice(request, pk):
         quantity = item.quantity or 0
         selling_price = item.product.selling_price or 0.0
         discount = item.discount or 0.0
-        
-        # Price excluding tax
-        price_without_tax = selling_price / (1 + tax_rate / 100) if tax_rate else selling_price
-        tax_amount = selling_price - price_without_tax
+    
+        #exclude price
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax_rate/ 100))
+        tax_amount = total_price - exclude_price
 
         final_price = selling_price - discount
         total = final_price * quantity
@@ -3894,7 +3913,7 @@ def GenerateInvoice(request, pk):
         total_amount += total
         total_tax_amount += tax_amount * quantity
         total_discount += discount_total
-        net_amount_before_tax += (price_without_tax * quantity) - discount_total
+        net_amount_before_tax += (exclude_price * quantity)
         total_quantity += quantity
 
     shipping_charge = order.shipping_charge or 0.0
@@ -3910,6 +3929,7 @@ def GenerateInvoice(request, pk):
         "net_amount_before_tax": net_amount_before_tax,
         "shipping_charge": shipping_charge,
         "grand_total": grand_total,
+        "exclude_price":exclude_price,
     }
 
     return render(request, 'invo.html', context)
@@ -4567,8 +4587,69 @@ class SendShippingIDView(APIView):
             return Response({'error': 'Failed to send Shipping ID'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+def GeneratePerformaInvoice(request, invoice_number):
+    # Fetch the order based on the passed invoice number
+    order = get_object_or_404(PerfomaInvoiceOrder, invoice=invoice_number)
+    
+    # Fetch the items related to the order
+    items = PerfomaInvoiceOrderItem.objects.filter(order=order)
+    try:
+        original_order = Order.objects.get(invoice=invoice_number)
+        bank = original_order.bank
+    except Order.DoesNotExist:
+        bank = None 
 
+    total_amount = 0
+    total_tax_amount = 0
+    total_discount = 0
+    net_amount_before_tax = 0
+    total_quantity = 0
+    
+    for item in items:
+        tax_rate = item.product.tax or 0.0
+        quantity = item.quantity or 0
+        selling_price = item.product.selling_price or 0.0
+        discount = item.discount or 0.0
+    
+        #exclude price
+        total_price = max(selling_price - discount, 0)
+        exclude_price = total_price / (1 + (tax_rate/ 100))
+        tax_amount = total_price - exclude_price
 
+        final_price = selling_price - discount
+        total = final_price * quantity
+        discount_total = discount * quantity
+
+        item.final_price = final_price
+        item.total = total
+        item.tax_amount = tax_amount
+
+        total_amount += total
+        total_tax_amount += tax_amount * quantity
+        total_discount += discount_total
+        net_amount_before_tax += (exclude_price * quantity)
+        total_quantity += quantity
+
+    shipping_charge = order.shipping_charge or 0.0
+    grand_total = total_amount + shipping_charge
+
+    context = {
+        "order": order,
+        "items": items,
+        "bank": bank,   
+        "totalamount": total_amount,
+        "total_tax_amount": total_tax_amount,
+        "total_quantity": total_quantity,
+        "discounted_amount": total_discount,
+        "net_amount_before_tax": net_amount_before_tax,
+        "shipping_charge": shipping_charge,
+        "grand_total": grand_total,
+        "exclude_price":exclude_price,
+        "original_order":original_order,
+    }
+
+    # Render the HTML template and pass the context
+    return render(request, 'performainvoice.html', context)
 
 
 
