@@ -2100,11 +2100,17 @@ class CreatePerfomaInvoice(BaseTokenView):
             warehouse = get_object_or_404(WareHouse, pk=warehouse_id)
             cart_items = BeposoftCart.objects.filter(user=authUser)
             serializer = PerfomaInvoiceOrderSerializers(data=request.data)
+            print(serializer)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
          # Retrieve cart items and validate serializer
             
-            order = serializer.save(warehouses_obj=warehouse)   # Create order
+              # Create order
+            order = serializer.save()
+
+            # Manually assign the warehouse to the order
+            order.warehouses_obj = warehouse
+            order.save()  
             print(order)
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
@@ -2156,6 +2162,7 @@ class PerfomaInvoiceListView(BaseTokenView):
 
             orders = PerfomaInvoiceOrder.objects.all()
             serializer = PerfomaInvoiceProductsSerializers(orders, many=True)
+            
             return Response({"data":serializer.data}, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
@@ -3547,17 +3554,6 @@ class OrderBulkUploadAPIView(BaseTokenView):
 
                         
 
-
-
-        
-
-           
-
-
-                       
-                        
-
-                      
 
                         customer_data = {
                                     "customer_id": customer.id,

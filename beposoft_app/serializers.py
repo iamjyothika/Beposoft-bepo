@@ -162,10 +162,11 @@ class CustomerModelSerializerView(serializers.ModelSerializer):
         fields = "__all__"
 
 class CustomerModelSerializerLimited(serializers.ModelSerializer):
+    family=serializers.CharField(source="manager.family.name")
    
     class Meta:
         model = Customers
-        fields = ['id','name', 'email', 'created_at','manager','phone']          
+        fields = ['id','name', 'email', 'created_at','manager','family','phone']          
 
 
 
@@ -703,10 +704,27 @@ class PaymentRecieptSerializers(serializers.ModelSerializer):
 
 
 class PerfomaInvoiceOrderSerializers(serializers.ModelSerializer):
-
+    warehouse_id = serializers.IntegerField(write_only=True) 
     class Meta :
         model = PerfomaInvoiceOrder
-        fields = '__all__'
+        fields = ["manage_staff", "company", "customer", "invoice", "billing_address",
+                  "shipping_mode", "code_charge","order_date", "family", "state", "status", "total_amount",
+                   "shipping_charge","note", "warehouse_id"]  # Include warehouse_id
+
+    def create(self, validated_data):
+        # Extract the warehouse_id from the validated data
+        warehouse_id = validated_data.pop("warehouse_id")
+        
+        # Create the order object first
+        order = super().create(validated_data)
+        
+        # Now link the warehouse to the order using the warehouse_id
+        warehouse = WareHouse.objects.get(id=warehouse_id)
+        order.warehouses_obj = warehouse
+        order.save()
+
+        return order
+       
     
     
      
@@ -745,8 +763,10 @@ class PerfomaInvoiceProducts(serializers.ModelSerializer):
     
         
 class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
-    manage_staff = serializers.CharField(source="manage_staff.name")
-    family = serializers.CharField(source="family.name")
+    manage_staff = serializers.CharField(source="manage_staff.id")
+    manage_staff_name=serializers.CharField(source="manage_staff.name")
+    family = serializers.CharField(source="family.id")
+    familyname=serializers.CharField(source="family.name")
  
     billing_address = ShippingAddressView(read_only=True)
     customer = CustomerSerilizers(read_only=True)
@@ -757,9 +777,9 @@ class PerfomaInvoiceProductsSerializers(serializers.ModelSerializer):
     warehouse_id = serializers.IntegerField(source="warehouses_obj.id", read_only=True)
     class Meta:
         model = PerfomaInvoiceOrder
-        fields = ["id","manage_staff","company","company_name","customer",
+        fields = ["id","manage_staff","manage_staff_name","company","company_name","customer",
                   "invoice","billing_address",
-                  "shipping_mode","code_charge","order_date","family",
+                  "shipping_mode","code_charge","order_date","family","familyname",
                   "state","status","total_amount",
                   "payment_receipts",
                   "shipping_charge","customerID","perfoma_items","warehouse_id"]
@@ -912,9 +932,10 @@ class GRVSerializer(serializers.ModelSerializer):
     staff=serializers.CharField(source='order.manage_staff.name')
     invoice = serializers.CharField(source = "order.invoice")
     order_date = serializers.CharField(source="order.order_date")
+    family=serializers.IntegerField(source="order.family.id")
     class Meta:
         model=GRVModel
-        fields=['order','id','product','returnreason','price','quantity','remark','note','status','customer','invoice','staff',"order_date",'date','time','updated_at']
+        fields=['order','id','product','family','returnreason','price','quantity','remark','note','status','customer','invoice','staff',"order_date",'date','time','updated_at']
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if 'time' in representation and representation['time']:
