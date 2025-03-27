@@ -172,7 +172,8 @@
         });
 
         function downloadPDF() {
-            const { jsPDF } = window.jspdf;
+
+            const jsPDF = window.jspdf.jsPDF;
             html2canvas(document.getElementById("pdf-content")).then(canvas => {
                 const imgData = canvas.toDataURL("image/png");
                 const pdf = new jsPDF("p", "mm", "a4");
@@ -183,6 +184,7 @@
             });
         }
     </script>
+</body>
 </body>
 </body>
 </html>
