@@ -388,7 +388,7 @@ class CustomerView(BaseTokenView):
             if error_response:
                 return error_response
 
-            customers = Customers.objects.all()
+            customers = Customers.objects.all().order_by('-created_at') 
             serializer = CustomerModelSerializerLimited(customers, many=True)
             return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
 
@@ -2073,7 +2073,7 @@ class CustomerOrderLedgerdata(BaseTokenView):
                 return error_response
             
             customer = get_object_or_404(Customers, pk=pk)
-            ledger = Order.objects.filter(customer =customer.pk)
+            ledger = Order.objects.filter(customer =customer.pk).order_by("-order_date")
             
             serializers = LedgerSerializers(ledger, many=True)
             return Response({"data":serializers.data},status=status.HTTP_200_OK)
@@ -2161,7 +2161,7 @@ class PerfomaInvoiceListView(BaseTokenView):
                 return error_response
 
             # Assuming 'created_at' is the field representing the order creation date
-            orders = PerfomaInvoiceOrder.objects.all().order_by('order_date')
+            orders = PerfomaInvoiceOrder.objects.all().order_by('-order_date')
 
             # Serialize the orders
             serializer = PerfomaInvoiceProductsSerializers(orders, many=True)

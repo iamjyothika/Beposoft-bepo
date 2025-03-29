@@ -442,7 +442,7 @@ class ShippingAddressView(serializers.ModelSerializer):
     # state = serializers.CharField(source='state.name', read_only=True)
     class Meta:
         model = Shipping
-        fields = ["id","address","zipcode","email","city","phone"]
+        fields = ["id","name","address","zipcode","email","city","phone"]
 
 
 
