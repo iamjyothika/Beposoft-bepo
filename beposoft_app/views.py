@@ -2643,6 +2643,24 @@ class ExpensAddViewExpectEmi(BaseTokenView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ExpensAddViewExpectEmiUpdate(BaseTokenView):
+    def put(self, request, pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense=get_object_or_404(ExpenseModel,pk=pk)
+            serializer = ExpenseExpectEmiSerializer(expense, data=request.data,partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"status": "success", "message": "Expense Updated Successfully"}, status=status.HTTP_200_OK)
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                            
+           
+        
+
 class ExpensAddAssestView(BaseTokenView):
     def post(self, request):
         try:
@@ -3874,6 +3892,7 @@ class StaffBasedCustomers(BaseTokenView):
         
         except Exception as e:
             return Response({"status": "error", "message": "An error occurred", "errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 def GenerateInvoice(request, pk):
     order = Order.objects.filter(pk=pk).first()

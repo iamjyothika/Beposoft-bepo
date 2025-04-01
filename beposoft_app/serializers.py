@@ -1019,11 +1019,11 @@ class ExpenseModelsSerializers(serializers.ModelSerializer):
     bank = Bankserializers(read_only=True)
     categoryname = serializers.SerializerMethodField()
     
-    purpose_of_payment=serializers.CharField(source="purpose_of_payment.name") 
+    purpose_of_pay=serializers.CharField(source="purpose_of_payment.name") 
     loanname = serializers.SerializerMethodField()
     class Meta:
         model = ExpenseModel
-        fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types',"loanname"]
+        fields = ['id','company','categoryname','payed_by','bank','purpose_of_payment','purpose_of_pay','amount','expense_date','transaction_id','description','added_by','loan','name','quantity','asset_types',"loanname"]
     
     
     def get_categoryname(self, obj):
