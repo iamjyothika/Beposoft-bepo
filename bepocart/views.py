@@ -270,7 +270,6 @@ class LiabilitiesAPIView(BaseTokenView):
     def get(self, request):
         try:
             loans = Loan.objects.all()
-            
             liabilities_data = []
             emi_choice = Choices.objects.filter(name__iexact="emi").first()
 
@@ -278,23 +277,21 @@ class LiabilitiesAPIView(BaseTokenView):
                 if emi_choice:
                     expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=emi_choice).values("amount")
                 else:
-                    expenses=ExpenseModel.objects.filter(loan=loan,purpose_of_payment=None).values("amount")
-                    
+                    expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=None).values("amount")
 
-               
-                
                 total_emi_paid = sum(exp["amount"] for exp in expenses)
                 
-                # Ensuring total_payment and total_amount_paid are not None before subtraction
                 total_payment = loan.total_payment or Decimal(0)
                 total_amount_paid = (loan.down_payment or Decimal(0)) + total_emi_paid
                 pending_amount = total_payment - total_amount_paid
-                
-                liabilities_data.append({
-                    "emi_name": loan.emi_name,
-                    "pending_amount": round(pending_amount, 2)
-                })
-            
+
+                # ✅ Only add to liabilities if EMI is still pending
+                if total_amount_paid < total_payment:
+                    liabilities_data.append({
+                        "emi_name": loan.emi_name,
+                        "pending_amount": round(pending_amount, 2)
+                    })
+
             return Response({"liabilities": liabilities_data}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -356,33 +353,68 @@ class AssetReport(BaseTokenView):
             # ✅ Fetch Expenses related to assets
             expenses = ExpenseModel.objects.filter(asset_types='assets')
 
-            # ✅ Group expenses by category (without "items" key)
+            # ✅ Group expenses by category
             category_expenses = defaultdict(list)
             for expense in expenses:
                 if expense.category and expense.category.category_name:
                     category_name = expense.category.category_name
-                    category_expenses[category_name].append({
+                    expense_data = {
                         "name": expense.name,
                         "quantity": expense.quantity,
-                        "amount":expense.amount
-                       
-            })
+                        "amount": expense.amount
+                    }
+
+                    # ✅ Check if EMI is completed and add to assets
+                    if hasattr(expense, 'emi_status') and expense.emi_status == "completed":
+                        expense_data["emi_status"] = "Completed"
+
+                    category_expenses[category_name].append(expense_data)
+
+            # ✅ Fetch EMIs that are fully paid and move them to assets
+            loans = Loan.objects.all()
+            emi_choice = Choices.objects.filter(name__iexact="emi").first()
+            completed_emis = []
+
+            for loan in loans:
+                if emi_choice:
+                    expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=emi_choice).values("amount")
+                else:
+                    expenses = ExpenseModel.objects.filter(loan=loan, purpose_of_payment=None).values("amount")
+
+                total_emi_paid = sum(exp["amount"] for exp in expenses)
+                total_payment = loan.total_payment or Decimal(0)
+                total_amount_paid = (loan.down_payment or Decimal(0)) + total_emi_paid
+
+                if total_amount_paid >= total_payment:  # ✅ Move fully paid EMI to assets
+                    completed_emis.append({
+                        "name": loan.emi_name,
+                        "status": "Completed",
+                        "amount": round(total_amount_paid, 2)
+                    })
+
+            # ✅ Construct the asset list
             assets = [
                 {
                     "category": "Products",
                     "products": products_data
                 }
             ] 
+
             for category, items in category_expenses.items():
                 assets.append({
                     "category": category,
                     "products": items
-                })       
-           
-               
-                
+                })
+
+            # ✅ Add fully paid EMIs as assets
+            if completed_emis:
+                assets.append({
+                    "category": "Fully Paid EMIs",
+                    "products": completed_emis
+                })
 
             return Response({"assets": assets}, status=status.HTTP_200_OK)
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
