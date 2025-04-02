@@ -388,7 +388,7 @@ class CustomerView(BaseTokenView):
             if error_response:
                 return error_response
 
-            customers = Customers.objects.all()
+            customers = Customers.objects.all().order_by('-created_at') 
             serializer = CustomerModelSerializerLimited(customers, many=True)
             return Response({"data": serializer.data, "message": "Customers retrieved successfully"}, status=status.HTTP_200_OK)
 
@@ -2073,7 +2073,7 @@ class CustomerOrderLedgerdata(BaseTokenView):
                 return error_response
             
             customer = get_object_or_404(Customers, pk=pk)
-            ledger = Order.objects.filter(customer =customer.pk)
+            ledger = Order.objects.filter(customer =customer.pk).order_by("-order_date")
             
             serializers = LedgerSerializers(ledger, many=True)
             return Response({"data":serializers.data},status=status.HTTP_200_OK)
@@ -2092,13 +2092,25 @@ class CreatePerfomaInvoice(BaseTokenView):
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
+            warehouse_id = request.data.get("warehouse_id")
+            if not warehouse_id:
+                return Response({"status": "error", "message": "Warehouse ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Retrieve and validate the warehouse object
+            warehouse = get_object_or_404(WareHouse, pk=warehouse_id)
             cart_items = BeposoftCart.objects.filter(user=authUser)
             serializer = PerfomaInvoiceOrderSerializers(data=request.data)
+            print(serializer)
             if not serializer.is_valid():
                 return Response({"status": "error", "message": "Validation failed", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
          # Retrieve cart items and validate serializer
             
-            order = serializer.save()  # Create order
+              # Create order
+            order = serializer.save()
+
+            # Manually assign the warehouse to the order
+            order.warehouses_obj = warehouse
+            order.save()  
             print(order)
             for item_data in cart_items:
                 product = get_object_or_404(Products, pk=item_data.product.pk)
@@ -2149,11 +2161,12 @@ class PerfomaInvoiceListView(BaseTokenView):
                 return error_response
 
             # Assuming 'created_at' is the field representing the order creation date
-            orders = PerfomaInvoiceOrder.objects.all().order_by('order_date')
+            orders = PerfomaInvoiceOrder.objects.all().order_by('-order_date')
 
             # Serialize the orders
             serializer = PerfomaInvoiceProductsSerializers(orders, many=True)
-            return Response({"data": serializer.data}, status=status.HTTP_200_OK)
+            
+            return Response({"data":serializer.data}, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response({"status": "error", "message": "Orders not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -3573,17 +3586,6 @@ class OrderBulkUploadAPIView(BaseTokenView):
 
                         
 
-
-
-        
-
-           
-
-
-                       
-                        
-
-                      
 
                         customer_data = {
                                     "customer_id": customer.id,

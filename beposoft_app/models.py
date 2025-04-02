@@ -419,7 +419,6 @@ class Bank(models.Model):
 class Order(models.Model):
     manage_staff = models.ForeignKey(User, on_delete=models.CASCADE)
     warehouses = models.ForeignKey(WareHouse, on_delete=models.CASCADE, null=True)
-
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="companies", null=True)
     customer = models.ForeignKey(Customers, on_delete=models.CASCADE, related_name="customer")
     invoice = models.CharField(max_length=20, unique=True, blank=True)
@@ -714,6 +713,7 @@ class PerfomaInvoiceOrder(models.Model):
 class PerfomaInvoiceOrderItem(models.Model):
     order = models.ForeignKey(PerfomaInvoiceOrder, on_delete=models.CASCADE, related_name='perfoma_items')
     product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    
     description = models.CharField(max_length=100,null=True)
     rate = models.IntegerField()  # without GST
     tax = models.PositiveIntegerField()  # tax percentage
