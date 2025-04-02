@@ -1433,25 +1433,36 @@ class OrderListView(BaseTokenView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OrderUpdateView(BaseTokenView):
-    def put(self, request,pk):
+    def put(self, request, pk):
         try:
+            # Get the user from the token
             authUser, error_response = self.get_user_from_token(request)
             if error_response:
                 return error_response
 
-            orders_change=get_object_or_404(Order, pk=pk)
-            serializer = OrderSerializer(orders_change,data=request.data,partial=True)
+            # Get the order object to update
+            order = get_object_or_404(Order, pk=pk)
+
+            # Use partial=True to allow only provided fields to be updated
+            # So if cod_amount or shipping_mode are not provided, it won't cause issues
+            serializer = OrderSerializer(order, data=request.data, partial=True)
+            print(serializer)
             if serializer.is_valid():
+                # Save the updated order
                 serializer.save()
+                print(serializer)
+                # Return the updated data in the response
                 return Response(serializer.data, status=status.HTTP_200_OK)
+
+            # If the serializer is not valid, return the errors
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         except DatabaseError:
             return Response({"status": "error", "message": "Database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            print(e)
+            print(f"Error: {e}")
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+
         
 
 class CustomerOrderItems(BaseTokenView):
@@ -3964,6 +3975,9 @@ def generate_shipping_label(request, order_id):
     # Fetch the order
     order = get_object_or_404(Order.objects.select_related('customer'), id=order_id)
 
+    # Check if cod_amount is present
+    cod_amount = order.cod_amount if order.payment_status == 'COD' and order.cod_amount > 0 else None
+
     # Fetch order items and related products efficiently
     order_items = OrderItem.objects.filter(order=order).select_related('product')
 
@@ -3991,9 +4005,9 @@ def generate_shipping_label(request, order_id):
         "warehouse": warehouse,
         "volume_weight": round(volume_weight, 2) if isinstance(volume_weight, (int, float)) else volume_weight,
         "speed": "0000053866",  # Can be dynamically generated if needed
-        
+        "cod_amount": cod_amount,  # Ensure this is included in context
     }
-    
+
     return render(request, "address.html", context)
 
 

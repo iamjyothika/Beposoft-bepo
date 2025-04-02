@@ -474,10 +474,28 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['product', 'name', 'description', 'rate', 'tax', 'quantity', 'price']
 
 class OrderSerializer(serializers.ModelSerializer):
-   
+    cod_amount = serializers.FloatField(required=False, allow_null=True)
+    shipping_mode = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Order
         fields = "__all__"
+
+    # Custom validation to make `cod_amount` not required when `shipping_mode` is provided
+    def validate(self, data):
+        # If shipping_mode is provided, cod_amount is not required
+        if 'shipping_mode' in data and data['shipping_mode'] is not None:
+            if 'cod_amount' in data and data['cod_amount'] is None:
+                raise serializers.ValidationError({'cod_amount': 'cod_amount cannot be null if shipping_mode is provided.'})
+        
+        # If cod_amount is provided, ensure shipping_mode can still be optional
+        if 'cod_amount' in data and data['cod_amount'] is not None:
+            if 'shipping_mode' in data and data['shipping_mode'] is None:
+                raise serializers.ValidationError({'shipping_mode': 'shipping_mode cannot be null if cod_amount is provided.'})
+
+        return data
+  
+     
         
 class BankSerializer(serializers.ModelSerializer):
     # created_user = serializers.CharField(source="created_user.name")
