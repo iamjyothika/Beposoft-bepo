@@ -64,17 +64,14 @@
 <body>
     <div class="container mt-4 pdf-container" id="pdf-content">
         <div class="text-center">
-            <span class="speed">SPEED - {{ speed }}</span>
+            <span class="speed">{{order.shipping_mode}}</span> 
         </div>
-
-        {% if order.cod_amount %}
-     
-
+        {% if order.cod_amount > 0 %}
         <div class="cod-details">
-            COD COLLECT RS. {{ order.cod_amount|floatformat:2 }}/-
+            COD COLLECT RS. <span id="cod-amount">{{ order.cod_amount|floatformat:2 }}</span>/-
         </div>
         <div class="cod-words" id="cod-words">
-            In Words RS.  Only
+            In Words RS. <span id="cod-amount-text"></span> Only
         </div>
         {% endif %}
         
@@ -135,46 +132,52 @@
     </div>
     
     <script>
-        
-            function numberToWords(num) {
-                if (num === 0) return "zero";
-    
-                const belowTwenty = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
-                const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
-                const thousands = ["", "thousand", "million", "billion"];
-    
-                function helper(n) {
-                    if (n === 0) return "";
-                    else if (n < 20) return belowTwenty[n] + " ";
-                    else if (n < 100) return tens[Math.floor(n / 10)] + " " + helper(n % 10);
-                    else return belowTwenty[Math.floor(n / 100)] + " hundred " + helper(n % 100);
-                }
-    
-                let words = "";
-                let i = 0;
-    
-                while (num > 0) {
-                    if (num % 1000 !== 0) {
-                        words = helper(num % 1000) + thousands[i] + " " + words;
-                    }
-                    num = Math.floor(num / 1000);
-                    i++;
-                }
-    
-                return words.trim();
-            }
-        document.addEventListener("DOMContentLoaded", function() {
-            let codAmount = parseFloat("{{ cod_amount|default:'0.00' }}");  // Ensure a default value
-            console.log("COD Amount:", codAmount);
+        function numberToWords(num) {
+            if (num === 0) return "zero";
 
-            codAmount = parseFloat(codAmount);
-            if (!isNaN(codAmount) && codAmount > 0) {
-                let codWords = numberToWords(codAmount);
-                codWords = codWords.charAt(0).toUpperCase() + codWords.slice(1);
-                document.getElementById("cod-words").innerText = "In Words RS. " + codWords + " Only";
+            const belowTwenty = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+            const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+            const thousands = ["", "thousand", "million", "billion"];
+
+            function helper(n) {
+                if (n === 0) return "";
+                else if (n < 20) return belowTwenty[n] + " ";
+                else if (n < 100) return tens[Math.floor(n / 10)] + " " + helper(n % 10);
+                else return belowTwenty[Math.floor(n / 100)] + " hundred " + helper(n % 100);
             }
-          
+
+            let words = "";
+            let i = 0;
+
+            while (num > 0) {
+                if (num % 1000 !== 0) {
+                    words = helper(num % 1000) + thousands[i] + " " + words;
+                }
+                num = Math.floor(num / 1000);
+                i++;
+            }
+
+            return words.trim();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            let codAmountElement = document.getElementById("cod-amount");
+            let codWordsElement = document.getElementById("cod-amount-text");
+            let codSection = document.getElementById("cod-words");
+        
+            if (codAmountElement && codWordsElement) {
+                let codAmount = parseFloat(codAmountElement.innerText.trim());
+        
+                if (!isNaN(codAmount) && codAmount > 0) {
+                    let codWords = numberToWords(codAmount);
+                    codWords = codWords.charAt(0).toUpperCase() + codWords.slice(1);
+                    codWordsElement.innerText = codWords;
+                } else {
+                    codSection.style.display = "none"; // Hide "In Words" if no valid COD amount
+                }
+            }
         });
+        
         function downloadPDF() {
 
             const jsPDF = window.jspdf.jsPDF;
@@ -193,8 +196,6 @@
     </script>
 
         
-</body>
-</body>
 </body>
 </html>
 +
