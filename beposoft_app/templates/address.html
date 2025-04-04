@@ -64,15 +64,14 @@
 <body>
     <div class="container mt-4 pdf-container" id="pdf-content">
         <div class="text-center">
-            <span class="speed">SPEED - {{ speed }}</span>
+            <span class="speed">{{order.shipping_mode}}</span> 
         </div>
-
-        {% if order.payment_status == 'COD' and order.cod_amount > 0 %}
+        {% if order.cod_amount > 0 %}
         <div class="cod-details">
-            COD COLLECT RS. {{ order.cod_amount|floatformat:2 }}/-
+            COD COLLECT RS. <span id="cod-amount">{{ order.cod_amount|floatformat:2 }}</span>/-
         </div>
         <div class="cod-words" id="cod-words">
-            In Words RS.  Only
+            In Words RS. <span id="cod-amount-text"></span> Only
         </div>
         {% endif %}
 
@@ -159,18 +158,24 @@
             return words.trim();
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            {% if order.payment_status == 'COD' and order.cod_amount > 0 %}
-                let codAmount = parseInt("{{ order.cod_amount|floatformat:0 }}".replace(/,/g, ''), 10);
-                
+        document.addEventListener("DOMContentLoaded", function () {
+            let codAmountElement = document.getElementById("cod-amount");
+            let codWordsElement = document.getElementById("cod-amount-text");
+            let codSection = document.getElementById("cod-words");
+        
+            if (codAmountElement && codWordsElement) {
+                let codAmount = parseFloat(codAmountElement.innerText.trim());
+        
                 if (!isNaN(codAmount) && codAmount > 0) {
                     let codWords = numberToWords(codAmount);
                     codWords = codWords.charAt(0).toUpperCase() + codWords.slice(1);
-                    document.getElementById("cod-words").innerText = "In Words RS. " + codWords + " Only";
+                    codWordsElement.innerText = codWords;
+                } else {
+                    codSection.style.display = "none"; // Hide "In Words" if no valid COD amount
                 }
-            {% endif %}
+            }
         });
-
+        
         function downloadPDF() {
 
             const jsPDF = window.jspdf.jsPDF;
@@ -184,7 +189,5 @@
             });
         }
     </script>
-</body>
-</body>
 </body>
 </html>
