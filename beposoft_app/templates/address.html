@@ -64,18 +64,16 @@
 <body>
     <div class="container mt-4 pdf-container" id="pdf-content">
         <div class="text-center">
-            <span class="speed">SPEED - {{ speed }}</span>
+            <span class="speed">{{order.shipping_mode}}</span> 
         </div>
-        {% if order.payment_method == 'COD' and order.cod_amount > 0 %}
+        {% if order.cod_amount > 0 %}
         <div class="cod-details">
             COD COLLECT RS. <span id="cod-amount">{{ order.cod_amount|floatformat:2 }}</span>/-
         </div>
         <div class="cod-words" id="cod-words">
             In Words RS. <span id="cod-amount-text"></span> Only
         </div>
-    {% endif %}
-    
-    <p>{{order.cod_amount}}</p>
+        {% endif %}
 
         <div class="mt-4 mb-3">
             <p class="to">TO</p>
