@@ -2700,6 +2700,23 @@ class ExpensAddAssestView(BaseTokenView):
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+    def put(self,request,pk):
+        try:
+            authUser, error_response = self.get_user_from_token(request)
+            if error_response:
+                return error_response
+            expense_change=ExpenseModel.objects.get(pk=pk)
+            expense=ExpenseSerializerAssest(expense_change,data=request.data,partial=True)
+            if expense.is_valid():
+                expense.save()
+                return Response({"status": "success", "message": "Expense Updated Successfully"}, status=status.HTTP_200_OK)
+            return Response(expense.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+        
 class ExpenseUpdate(BaseTokenView):
     def put(self, request, pk):
         try:
@@ -3993,6 +4010,8 @@ def Deliverynote(request, order_id):
 def generate_shipping_label(request, order_id):
     # Fetch the order
     order = get_object_or_404(Order.objects.select_related('customer'), id=order_id)
+    print(f"Order ID: {order_id}, COD Amount: {order.cod_amount}, Payment Status: {order.payment_status}")
+
 
     # Check if cod_amount is present
     cod_amount = order.cod_amount if order.payment_status == 'COD' and order.cod_amount > 0 else None

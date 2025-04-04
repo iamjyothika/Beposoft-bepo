@@ -67,7 +67,9 @@
             <span class="speed">SPEED - {{ speed }}</span>
         </div>
 
-        {% if order.payment_status == 'COD' and order.cod_amount > 0 %}
+        {% if order.cod_amount %}
+     
+
         <div class="cod-details">
             COD COLLECT RS. {{ order.cod_amount|floatformat:2 }}/-
         </div>
@@ -75,6 +77,8 @@
             In Words RS.  Only
         </div>
         {% endif %}
+        
+        
 
         <div class="mt-4 mb-3">
             <p class="to">TO</p>
@@ -131,21 +135,45 @@
     </div>
     
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            {% if cod_amount %}
-                // Ensure that cod_amount exists and is properly passed to JS
-                let codAmount = {{ cod_amount|floatformat:2 }};  // Ensure it's formatted correctly
+        
+            function numberToWords(num) {
+                if (num === 0) return "zero";
     
-                if (!isNaN(codAmount) && codAmount > 0) {
-                    // Convert the amount to words
-                    let codWords = numberToWords(codAmount);
-                    codWords = codWords.charAt(0).toUpperCase() + codWords.slice(1); // Capitalize the first letter
-                    document.getElementById("cod-words").innerText = "In Words RS. " + codWords + " Only";
+                const belowTwenty = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+                const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+                const thousands = ["", "thousand", "million", "billion"];
+    
+                function helper(n) {
+                    if (n === 0) return "";
+                    else if (n < 20) return belowTwenty[n] + " ";
+                    else if (n < 100) return tens[Math.floor(n / 10)] + " " + helper(n % 10);
+                    else return belowTwenty[Math.floor(n / 100)] + " hundred " + helper(n % 100);
                 }
-            {% else %}
-                // Handle case where cod_amount is not available or not valid
-                console.log("COD amount is not available.");
-            {% endif %}
+    
+                let words = "";
+                let i = 0;
+    
+                while (num > 0) {
+                    if (num % 1000 !== 0) {
+                        words = helper(num % 1000) + thousands[i] + " " + words;
+                    }
+                    num = Math.floor(num / 1000);
+                    i++;
+                }
+    
+                return words.trim();
+            }
+        document.addEventListener("DOMContentLoaded", function() {
+            let codAmount = parseFloat("{{ cod_amount|default:'0.00' }}");  // Ensure a default value
+            console.log("COD Amount:", codAmount);
+
+            codAmount = parseFloat(codAmount);
+            if (!isNaN(codAmount) && codAmount > 0) {
+                let codWords = numberToWords(codAmount);
+                codWords = codWords.charAt(0).toUpperCase() + codWords.slice(1);
+                document.getElementById("cod-words").innerText = "In Words RS. " + codWords + " Only";
+            }
+          
         });
         function downloadPDF() {
 
@@ -158,9 +186,15 @@
                 pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
                 pdf.save("shipping_label.pdf");
             });
-        }
+        } 
+        
+
+
     </script>
+
+        
 </body>
 </body>
 </body>
 </html>
++

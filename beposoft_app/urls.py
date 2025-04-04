@@ -136,6 +136,7 @@ urlpatterns = [
     path('api/expense/get/<int:pk>/',ExpenseUpdate.as_view()),
     path('api/expense/addexpectemi/',ExpensAddViewExpectEmi.as_view()),
     path('api/assest/',ExpensAddAssestView.as_view()),
+    path('api/asset/update/<int:pk>/',ExpensAddAssestView.as_view()),
     path('api/expense/addexpectemiupdate/<int:pk>/',ExpensAddViewExpectEmiUpdate.as_view()),
 
 
